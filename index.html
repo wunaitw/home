@@ -1,0 +1,930 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>家居物品管理</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
+<style>
+  :root {
+    --primary: #4f7cff;
+    --primary-dark: #3a63e0;
+    --danger: #ef4444;
+    --warning: #f59e0b;
+    --success: #10b981;
+    --gray-50: #f9fafb;
+    --gray-100: #f3f4f6;
+    --gray-200: #e5e7eb;
+    --gray-400: #9ca3af;
+    --gray-600: #4b5563;
+    --gray-800: #1f2937;
+    --radius: 12px;
+    --shadow: 0 2px 8px rgba(0,0,0,0.08);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--gray-50); color: var(--gray-800); min-height: 100vh; }
+
+  /* Auth Screen */
+  .auth-screen { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+  .auth-box { background: white; border-radius: 20px; padding: 36px 32px; width: 100%; max-width: 400px; box-shadow: 0 20px 60px rgba(0,0,0,0.2); }
+  .auth-logo { text-align: center; font-size: 48px; margin-bottom: 8px; }
+  .auth-title { text-align: center; font-size: 22px; font-weight: 700; margin-bottom: 4px; }
+  .auth-subtitle { text-align: center; color: var(--gray-600); font-size: 14px; margin-bottom: 28px; }
+  .auth-tabs { display: flex; background: var(--gray-100); border-radius: 10px; padding: 4px; margin-bottom: 24px; }
+  .auth-tab { flex: 1; padding: 8px; text-align: center; border: none; background: none; cursor: pointer; border-radius: 8px; font-size: 14px; font-weight: 600; color: var(--gray-600); transition: all .2s; }
+  .auth-tab.active { background: white; color: var(--primary); box-shadow: 0 1px 4px rgba(0,0,0,0.1); }
+  .auth-error { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; border-radius: 8px; padding: 10px 14px; font-size: 13px; margin-bottom: 14px; }
+  .auth-success { background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; border-radius: 8px; padding: 10px 14px; font-size: 13px; margin-bottom: 14px; }
+
+  /* Household Screen */
+  .household-screen { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; background: var(--gray-50); }
+  .household-box { background: white; border-radius: 20px; padding: 32px; width: 100%; max-width: 420px; box-shadow: var(--shadow); }
+
+  /* Loading */
+  .loading-screen { min-height: 100vh; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 16px; }
+  .spinner { width: 40px; height: 40px; border: 3px solid var(--gray-200); border-top-color: var(--primary); border-radius: 50%; animation: spin .8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Header */
+  header { background: white; border-bottom: 1px solid var(--gray-200); padding: 14px 20px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; box-shadow: var(--shadow); }
+  .header-left { display: flex; align-items: center; gap: 10px; }
+  header h1 { font-size: 18px; font-weight: 700; color: var(--primary); }
+  .household-badge { font-size: 12px; background: #eff6ff; color: var(--primary); padding: 3px 10px; border-radius: 99px; font-weight: 600; }
+  .btn-signout { background: none; border: none; cursor: pointer; color: var(--gray-400); font-size: 18px; padding: 4px 8px; border-radius: 8px; transition: background .15s; }
+  .btn-signout:hover { background: var(--gray-100); }
+
+  /* Nav */
+  nav { background: white; border-bottom: 1px solid var(--gray-200); display: flex; overflow-x: auto; }
+  nav button { flex: 1; min-width: 70px; padding: 12px 8px; background: none; border: none; border-bottom: 3px solid transparent; cursor: pointer; font-size: 13px; color: var(--gray-600); transition: all .2s; white-space: nowrap; }
+  nav button.active { color: var(--primary); border-bottom-color: var(--primary); font-weight: 600; }
+  nav button:hover:not(.active) { background: var(--gray-50); }
+
+  /* Main */
+  main { padding: 20px; max-width: 700px; margin: 0 auto; }
+  .section { display: none; }
+  .section.active { display: block; }
+
+  /* Cards */
+  .card { background: white; border-radius: var(--radius); box-shadow: var(--shadow); padding: 20px; margin-bottom: 16px; }
+  .card-title { font-size: 15px; font-weight: 600; color: var(--gray-600); margin-bottom: 12px; }
+
+  /* Stats */
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px; }
+  .stat { background: white; border-radius: var(--radius); box-shadow: var(--shadow); padding: 16px 12px; text-align: center; }
+  .stat-num { font-size: 32px; font-weight: 700; }
+  .stat-label { font-size: 12px; color: var(--gray-600); margin-top: 4px; }
+  .stat.danger .stat-num { color: var(--danger); }
+  .stat.warning .stat-num { color: var(--warning); }
+  .stat.ok .stat-num { color: var(--primary); }
+
+  /* Item cards */
+  .item-card { background: white; border-radius: var(--radius); box-shadow: var(--shadow); padding: 16px; margin-bottom: 10px; display: flex; align-items: flex-start; gap: 14px; border-left: 4px solid var(--gray-200); }
+  .item-card.expired { border-left-color: var(--danger); }
+  .item-card.expiring-soon { border-left-color: var(--warning); }
+  .item-card.ok { border-left-color: var(--success); }
+  .item-card.no-expiry { border-left-color: var(--gray-400); }
+  .item-icon { font-size: 28px; flex-shrink: 0; }
+  .item-info { flex: 1; min-width: 0; }
+  .item-name { font-weight: 600; font-size: 15px; margin-bottom: 4px; }
+  .item-meta { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px; }
+  .tag { font-size: 11px; padding: 2px 8px; border-radius: 99px; background: var(--gray-100); color: var(--gray-600); }
+  .tag.location { background: #eff6ff; color: #3b82f6; }
+  .tag.qty { background: #f0fdf4; color: #16a34a; }
+  .expiry-label { font-size: 12px; font-weight: 600; }
+  .expiry-label.expired { color: var(--danger); }
+  .expiry-label.expiring-soon { color: var(--warning); }
+  .expiry-label.ok { color: var(--success); }
+  .expiry-label.no-expiry { color: var(--gray-400); }
+  .item-actions { display: flex; gap: 6px; flex-shrink: 0; }
+  .btn-icon { background: var(--gray-100); border: none; border-radius: 8px; width: 34px; height: 34px; cursor: pointer; font-size: 16px; transition: background .15s; }
+  .btn-icon:hover { background: var(--gray-200); }
+  .btn-icon.delete:hover { background: #fee2e2; }
+
+  /* Filter */
+  .filter-bar { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+  .filter-bar input, .filter-bar select { flex: 1; min-width: 130px; padding: 10px 12px; border: 1px solid var(--gray-200); border-radius: 10px; font-size: 14px; background: white; outline: none; }
+  .filter-bar input:focus, .filter-bar select:focus { border-color: var(--primary); }
+  .sort-bar { display: flex; gap: 8px; margin-bottom: 12px; align-items: center; font-size: 13px; color: var(--gray-600); }
+  .sort-bar select { flex: none; padding: 6px 10px; font-size: 13px; border: 1px solid var(--gray-200); border-radius: 8px; outline: none; }
+
+  /* Form */
+  .form-group { margin-bottom: 16px; }
+  label { display: block; font-size: 13px; font-weight: 600; color: var(--gray-600); margin-bottom: 6px; }
+  input[type="text"], input[type="email"], input[type="password"], input[type="number"], input[type="date"], select, textarea {
+    width: 100%; padding: 11px 14px; border: 1px solid var(--gray-200); border-radius: 10px;
+    font-size: 15px; outline: none; transition: border-color .2s; background: white;
+  }
+  input:focus, select:focus, textarea:focus { border-color: var(--primary); }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+
+  /* Buttons */
+  .btn { padding: 12px 20px; border: none; border-radius: 10px; font-size: 15px; font-weight: 600; cursor: pointer; transition: all .15s; }
+  .btn-primary { background: var(--primary); color: white; }
+  .btn-primary:hover { background: var(--primary-dark); }
+  .btn-secondary { background: var(--gray-100); color: var(--gray-800); }
+  .btn-secondary:hover { background: var(--gray-200); }
+  .btn-block { width: 100%; }
+  .btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+  /* Divider */
+  .divider { display: flex; align-items: center; gap: 12px; margin: 20px 0; color: var(--gray-400); font-size: 13px; }
+  .divider::before, .divider::after { content: ''; flex: 1; height: 1px; background: var(--gray-200); }
+
+  /* Invite code */
+  .invite-code-box { background: var(--gray-50); border: 2px dashed var(--gray-200); border-radius: 12px; padding: 20px; text-align: center; }
+  .invite-code { font-size: 36px; font-weight: 900; letter-spacing: 8px; color: var(--primary); font-family: monospace; }
+  .invite-hint { font-size: 12px; color: var(--gray-600); margin-top: 8px; }
+
+  /* Scanner */
+  #scanner-container { position: relative; background: black; border-radius: var(--radius); overflow: hidden; width: 100%; aspect-ratio: 4/3; margin-bottom: 16px; display: flex; align-items: center; justify-content: center; }
+  #scanner-container video { width: 100%; height: 100%; object-fit: cover; }
+  #scanner-container canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+  .scan-line { position: absolute; left: 10%; right: 10%; height: 2px; background: var(--primary); box-shadow: 0 0 8px var(--primary); animation: scan 2s ease-in-out infinite; }
+  @keyframes scan { 0%,100% { top: 20%; } 50% { top: 80%; } }
+  #scan-result { text-align: center; font-weight: 600; margin-bottom: 12px; min-height: 24px; font-size: 14px; }
+  #scan-result.success { color: var(--success); }
+  #scan-result.error { color: var(--danger); }
+  .scanner-btns { display: flex; gap: 10px; }
+
+  /* Modal */
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 200; align-items: center; justify-content: center; padding: 20px; }
+  .modal-overlay.open { display: flex; }
+  .modal { background: white; border-radius: 16px; padding: 24px; width: 100%; max-width: 450px; max-height: 90vh; overflow-y: auto; }
+  .modal h2 { font-size: 18px; font-weight: 700; margin-bottom: 20px; }
+  .modal-footer { display: flex; gap: 10px; margin-top: 20px; }
+
+  /* Alerts */
+  .alert { border-radius: 10px; padding: 12px 16px; margin-bottom: 12px; font-size: 14px; font-weight: 500; display: flex; align-items: center; gap: 10px; }
+  .alert.danger { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
+  .alert.warning { background: #fffbeb; color: #92400e; border: 1px solid #fde68a; }
+
+  /* Empty */
+  .empty { text-align: center; padding: 40px 20px; color: var(--gray-400); }
+  .empty-icon { font-size: 48px; margin-bottom: 12px; }
+  .empty p { font-size: 15px; }
+
+  /* Members list */
+  .member-row { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--gray-100); }
+  .member-avatar { width: 36px; height: 36px; border-radius: 50%; background: var(--primary); color: white; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; flex-shrink: 0; }
+  .member-info { flex: 1; }
+  .member-email { font-size: 14px; font-weight: 500; }
+  .member-role { font-size: 12px; color: var(--gray-400); }
+</style>
+</head>
+<body>
+
+<!-- LOADING -->
+<div id="loading-screen" class="loading-screen">
+  <div class="spinner"></div>
+  <p style="color:var(--gray-400)">載入中...</p>
+</div>
+
+<!-- AUTH SCREEN -->
+<div id="auth-screen" class="auth-screen" style="display:none">
+  <div class="auth-box">
+    <div class="auth-logo">🏠</div>
+    <div class="auth-title">家居物品管理</div>
+    <div class="auth-subtitle">追蹤到期日，告別過期浪費</div>
+    <div class="auth-tabs">
+      <button class="auth-tab active" onclick="switchAuthTab('login')">登入</button>
+      <button class="auth-tab" onclick="switchAuthTab('signup')">註冊</button>
+    </div>
+    <div id="auth-message"></div>
+    <div class="form-group">
+      <label>電子信箱</label>
+      <input type="email" id="auth-email" placeholder="your@email.com" onkeydown="if(event.key==='Enter')handleAuth()">
+    </div>
+    <div class="form-group">
+      <label>密碼</label>
+      <input type="password" id="auth-password" placeholder="至少 6 個字元" onkeydown="if(event.key==='Enter')handleAuth()">
+    </div>
+    <button class="btn btn-primary btn-block" id="auth-btn" onclick="handleAuth()">登入</button>
+  </div>
+</div>
+
+<!-- HOUSEHOLD SETUP -->
+<div id="household-screen" class="household-screen" style="display:none">
+  <div class="household-box">
+    <div style="font-size:40px;text-align:center;margin-bottom:12px">🏡</div>
+    <h2 style="text-align:center;margin-bottom:6px">建立你的家庭空間</h2>
+    <p style="text-align:center;color:var(--gray-600);font-size:14px;margin-bottom:28px">建立新家庭，或輸入邀請碼加入已有的家庭</p>
+
+    <div id="household-message"></div>
+
+    <div class="form-group">
+      <label>建立新家庭</label>
+      <input type="text" id="household-name" placeholder="例：我家、Ivy 的家">
+    </div>
+    <button class="btn btn-primary btn-block" onclick="createHousehold()">建立家庭</button>
+
+    <div class="divider">或</div>
+
+    <div class="form-group">
+      <label>加入現有家庭（輸入邀請碼）</label>
+      <input type="text" id="invite-input" placeholder="6 位邀請碼" style="text-transform:uppercase;letter-spacing:4px;font-size:18px;font-weight:700;text-align:center">
+    </div>
+    <button class="btn btn-secondary btn-block" onclick="joinHousehold()">加入家庭</button>
+
+    <div style="margin-top:16px;text-align:center">
+      <button onclick="signOut()" style="background:none;border:none;color:var(--gray-400);cursor:pointer;font-size:13px">登出</button>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="app" style="display:none">
+  <header>
+    <div class="header-left">
+      <h1>🏠 家居管理</h1>
+      <span class="household-badge" id="household-name-badge">我家</span>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <button class="btn-signout" onclick="showSection('settings')" title="設定">⚙️</button>
+      <button class="btn-signout" onclick="signOut()" title="登出">🚪</button>
+    </div>
+  </header>
+
+  <nav>
+    <button class="active" onclick="showSection('dashboard')">📊 總覽</button>
+    <button onclick="showSection('items')">📦 物品</button>
+    <button onclick="showSection('add')">➕ 新增</button>
+    <button onclick="showSection('scanner')">📷 掃描</button>
+    <button onclick="showSection('settings')">⚙️ 設定</button>
+  </nav>
+
+  <main>
+
+    <!-- DASHBOARD -->
+    <div id="section-dashboard" class="section active">
+      <div class="stats">
+        <div class="stat danger"><div class="stat-num" id="stat-expired">0</div><div class="stat-label">已過期</div></div>
+        <div class="stat warning"><div class="stat-num" id="stat-soon">0</div><div class="stat-label">7天內到期</div></div>
+        <div class="stat ok"><div class="stat-num" id="stat-total">0</div><div class="stat-label">總物品數</div></div>
+      </div>
+      <div id="alerts-container"></div>
+      <div class="card">
+        <div class="card-title">⚠️ 需要注意的物品</div>
+        <div id="urgent-list"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">📍 各位置物品數</div>
+        <div id="location-breakdown"></div>
+      </div>
+    </div>
+
+    <!-- ITEMS -->
+    <div id="section-items" class="section">
+      <div class="filter-bar">
+        <input type="text" id="search-input" placeholder="🔍 搜尋物品名稱..." oninput="renderItems()">
+        <select id="filter-cat" onchange="renderItems()"><option value="">全部分類</option></select>
+        <select id="filter-loc" onchange="renderItems()"><option value="">全部位置</option></select>
+      </div>
+      <div class="sort-bar">
+        排序：
+        <select id="sort-by" onchange="renderItems()">
+          <option value="expiry">到期日</option>
+          <option value="name">名稱</option>
+          <option value="category">分類</option>
+          <option value="location">位置</option>
+        </select>
+      </div>
+      <div id="items-list"></div>
+    </div>
+
+    <!-- ADD -->
+    <div id="section-add" class="section">
+      <div class="card">
+        <div class="card-title">新增物品</div>
+        <div class="form-group"><label>物品名稱 *</label><input type="text" id="add-name" placeholder="例：牛奶、維他命C、洗碗精"></div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>分類</label>
+            <select id="add-cat">
+              <option value="食品">🍎 食品</option><option value="飲料">🧃 飲料</option>
+              <option value="藥品">💊 藥品</option><option value="保養品">🧴 保養品</option>
+              <option value="清潔用品">🧹 清潔用品</option><option value="3C">📱 3C</option>
+              <option value="衣物">👕 衣物</option><option value="其他">📦 其他</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>存放位置</label>
+            <select id="add-loc">
+              <option value="冰箱">🧊 冰箱</option><option value="廚房">🍳 廚房</option>
+              <option value="客廳">🛋️ 客廳</option><option value="臥室">🛏️ 臥室</option>
+              <option value="浴室">🚿 浴室</option><option value="儲藏室">🗄️ 儲藏室</option>
+              <option value="陽台">🌿 陽台</option><option value="其他">📍 其他</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>數量</label><input type="number" id="add-qty" value="1" min="1"></div>
+          <div class="form-group"><label>單位</label><input type="text" id="add-unit" placeholder="個、瓶、包..."></div>
+        </div>
+        <div class="form-group"><label>到期日（選填）</label><input type="date" id="add-expiry"></div>
+        <div class="form-group"><label>備註（選填）</label><input type="text" id="add-note" placeholder="補充說明..."></div>
+        <button class="btn btn-primary btn-block" id="add-btn" onclick="addItem()">新增物品</button>
+      </div>
+    </div>
+
+    <!-- SCANNER -->
+    <div id="section-scanner" class="section">
+      <div class="card">
+        <div class="card-title">📷 掃描條碼</div>
+        <p style="font-size:13px;color:var(--gray-600);margin-bottom:14px">對準商品條碼，系統會自動偵測。</p>
+        <div id="scanner-container">
+          <div style="color:white;text-align:center;padding:20px"><div style="font-size:40px;margin-bottom:10px">📷</div><p>點擊「開始掃描」啟動相機</p></div>
+        </div>
+        <div id="scan-result"></div>
+        <div class="scanner-btns">
+          <button class="btn btn-primary" id="btn-start-scan" onclick="startScanner()" style="flex:1">開始掃描</button>
+          <button class="btn btn-secondary" id="btn-stop-scan" onclick="stopScanner()" style="flex:1;display:none">停止掃描</button>
+        </div>
+      </div>
+      <div id="scan-form-card" class="card" style="display:none">
+        <div class="card-title">確認商品資訊</div>
+        <div class="form-group"><label>條碼</label><input type="text" id="scan-barcode" readonly style="background:var(--gray-100)"></div>
+        <div class="form-group"><label>物品名稱 *</label><input type="text" id="scan-name" placeholder="請輸入名稱"></div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>分類</label>
+            <select id="scan-cat">
+              <option value="食品">🍎 食品</option><option value="飲料">🧃 飲料</option>
+              <option value="藥品">💊 藥品</option><option value="保養品">🧴 保養品</option>
+              <option value="清潔用品">🧹 清潔用品</option><option value="3C">📱 3C</option>
+              <option value="衣物">👕 衣物</option><option value="其他">📦 其他</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>位置</label>
+            <select id="scan-loc">
+              <option value="冰箱">🧊 冰箱</option><option value="廚房">🍳 廚房</option>
+              <option value="客廳">🛋️ 客廳</option><option value="臥室">🛏️ 臥室</option>
+              <option value="浴室">🚿 浴室</option><option value="儲藏室">🗄️ 儲藏室</option>
+              <option value="陽台">🌿 陽台</option><option value="其他">📍 其他</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>數量</label><input type="number" id="scan-qty" value="1" min="1"></div>
+          <div class="form-group"><label>到期日</label><input type="date" id="scan-expiry"></div>
+        </div>
+        <button class="btn btn-primary btn-block" onclick="addScannedItem()">加入清單</button>
+      </div>
+    </div>
+
+    <!-- SETTINGS -->
+    <div id="section-settings" class="section">
+      <div class="card">
+        <div class="card-title">🏡 家庭空間</div>
+        <div class="invite-code-box">
+          <div style="font-size:13px;color:var(--gray-600);margin-bottom:8px">邀請家人輸入此邀請碼加入</div>
+          <div class="invite-code" id="display-invite-code">------</div>
+          <div class="invite-hint">分享給家人，他們註冊後輸入此碼即可加入</div>
+          <button class="btn btn-secondary" style="margin-top:12px;font-size:13px;padding:8px 16px" onclick="copyInviteCode()">複製邀請碼</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">👥 家庭成員</div>
+        <div id="members-list"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">👤 我的帳號</div>
+        <div style="font-size:14px;color:var(--gray-600)" id="user-email-display"></div>
+        <button class="btn btn-secondary" style="margin-top:14px" onclick="signOut()">登出</button>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- EDIT MODAL -->
+<div class="modal-overlay" id="edit-modal">
+  <div class="modal">
+    <h2>編輯物品</h2>
+    <input type="hidden" id="edit-id">
+    <div class="form-group"><label>物品名稱</label><input type="text" id="edit-name"></div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>分類</label>
+        <select id="edit-cat">
+          <option value="食品">🍎 食品</option><option value="飲料">🧃 飲料</option>
+          <option value="藥品">💊 藥品</option><option value="保養品">🧴 保養品</option>
+          <option value="清潔用品">🧹 清潔用品</option><option value="3C">📱 3C</option>
+          <option value="衣物">👕 衣物</option><option value="其他">📦 其他</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>位置</label>
+        <select id="edit-loc">
+          <option value="冰箱">🧊 冰箱</option><option value="廚房">🍳 廚房</option>
+          <option value="客廳">🛋️ 客廳</option><option value="臥室">🛏️ 臥室</option>
+          <option value="浴室">🚿 浴室</option><option value="儲藏室">🗄️ 儲藏室</option>
+          <option value="陽台">🌿 陽台</option><option value="其他">📍 其他</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>數量</label><input type="number" id="edit-qty" min="1"></div>
+      <div class="form-group"><label>單位</label><input type="text" id="edit-unit"></div>
+    </div>
+    <div class="form-group"><label>到期日</label><input type="date" id="edit-expiry"></div>
+    <div class="form-group"><label>備註</label><input type="text" id="edit-note"></div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" style="flex:1" onclick="closeModal()">取消</button>
+      <button class="btn btn-primary" style="flex:1" onclick="saveEdit()">儲存</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ===== SUPABASE CONFIG =====
+const SUPABASE_URL = 'https://fnsughnssooceatrtbad.supabase.co'
+const SUPABASE_KEY = 'sb_publishable_wJLBSwidsYSVDeeBVVI-eg_XdqCznwO'
+const { createClient } = supabase
+const db = createClient(SUPABASE_URL, SUPABASE_KEY)
+
+// ===== STATE =====
+let currentUser = null
+let currentHousehold = null
+let items = []
+let authMode = 'login'
+
+// ===== CONSTANTS =====
+const catIcons = { '食品':'🍎','飲料':'🧃','藥品':'💊','保養品':'🧴','清潔用品':'🧹','3C':'📱','衣物':'👕','其他':'📦' }
+
+// ===== INIT =====
+db.auth.onAuthStateChange(async (event, session) => {
+  if (session?.user) {
+    currentUser = session.user
+    await loadProfile()
+  } else {
+    currentUser = null
+    currentHousehold = null
+    showScreen('auth')
+  }
+})
+
+async function loadProfile() {
+  const { data, error } = await db
+    .from('profiles')
+    .select('*, households(*)')
+    .eq('id', currentUser.id)
+    .single()
+
+  if (error || !data) { showScreen('auth'); return }
+
+  if (data.household_id && data.households) {
+    currentHousehold = data.households
+    document.getElementById('household-name-badge').textContent = currentHousehold.name
+    document.getElementById('display-invite-code').textContent = currentHousehold.invite_code
+    document.getElementById('user-email-display').textContent = currentUser.email
+    await loadItems()
+    showScreen('app')
+  } else {
+    showScreen('household')
+  }
+}
+
+function showScreen(name) {
+  document.getElementById('loading-screen').style.display = 'none'
+  document.getElementById('auth-screen').style.display = name === 'auth' ? 'flex' : 'none'
+  document.getElementById('household-screen').style.display = name === 'household' ? 'flex' : 'none'
+  document.getElementById('app').style.display = name === 'app' ? 'block' : 'none'
+}
+
+// ===== AUTH =====
+function switchAuthTab(mode) {
+  authMode = mode
+  document.querySelectorAll('.auth-tab').forEach((t, i) => {
+    t.classList.toggle('active', (i === 0 && mode === 'login') || (i === 1 && mode === 'signup'))
+  })
+  document.getElementById('auth-btn').textContent = mode === 'login' ? '登入' : '註冊'
+  document.getElementById('auth-message').innerHTML = ''
+}
+
+async function handleAuth() {
+  const email = document.getElementById('auth-email').value.trim()
+  const password = document.getElementById('auth-password').value
+  const btn = document.getElementById('auth-btn')
+
+  if (!email || !password) { showAuthMsg('請填寫信箱和密碼', 'error'); return }
+
+  btn.disabled = true
+  btn.textContent = '處理中...'
+
+  if (authMode === 'login') {
+    const { error } = await db.auth.signInWithPassword({ email, password })
+    if (error) { showAuthMsg('登入失敗：' + translateError(error.message), 'error'); btn.disabled = false; btn.textContent = '登入' }
+  } else {
+    const { error } = await db.auth.signUp({ email, password })
+    if (error) { showAuthMsg('註冊失敗：' + translateError(error.message), 'error'); btn.disabled = false; btn.textContent = '註冊' }
+    else { showAuthMsg('✅ 註冊成功！請確認信箱後登入。', 'success'); switchAuthTab('login') }
+  }
+}
+
+function showAuthMsg(msg, type) {
+  document.getElementById('auth-message').innerHTML = `<div class="${type === 'error' ? 'auth-error' : 'auth-success'}">${msg}</div>`
+}
+
+function translateError(msg) {
+  if (msg.includes('Invalid login')) return '信箱或密碼錯誤'
+  if (msg.includes('Email not confirmed')) return '請先確認信箱'
+  if (msg.includes('already registered')) return '此信箱已被註冊'
+  if (msg.includes('Password should be')) return '密碼至少需要 6 個字元'
+  return msg
+}
+
+async function signOut() {
+  await db.auth.signOut()
+}
+
+// ===== HOUSEHOLD =====
+async function createHousehold() {
+  const name = document.getElementById('household-name').value.trim()
+  if (!name) { showHouseholdMsg('請輸入家庭名稱', 'error'); return }
+
+  const { data: hh, error: hhErr } = await db
+    .from('households')
+    .insert({ name, owner_id: currentUser.id })
+    .select()
+    .single()
+
+  if (hhErr) { showHouseholdMsg('建立失敗，請再試一次', 'error'); return }
+
+  const { error: profileErr } = await db
+    .from('profiles')
+    .update({ household_id: hh.id })
+    .eq('id', currentUser.id)
+
+  if (profileErr) { showHouseholdMsg('設定失敗，請再試一次', 'error'); return }
+
+  await loadProfile()
+}
+
+async function joinHousehold() {
+  const code = document.getElementById('invite-input').value.trim().toUpperCase()
+  if (!code || code.length !== 6) { showHouseholdMsg('請輸入 6 位邀請碼', 'error'); return }
+
+  const { data: hh, error } = await db
+    .from('households')
+    .select()
+    .eq('invite_code', code)
+    .single()
+
+  if (error || !hh) { showHouseholdMsg('找不到此邀請碼，請確認是否正確', 'error'); return }
+
+  await db.from('profiles').update({ household_id: hh.id }).eq('id', currentUser.id)
+  await loadProfile()
+}
+
+function showHouseholdMsg(msg, type) {
+  document.getElementById('household-message').innerHTML =
+    `<div class="${type === 'error' ? 'auth-error' : 'auth-success'}" style="margin-bottom:14px">${msg}</div>`
+}
+
+// ===== ITEMS =====
+async function loadItems() {
+  if (!currentHousehold) return
+  const { data } = await db.from('items').select('*').eq('household_id', currentHousehold.id)
+  items = data || []
+  renderDashboard()
+  if (document.getElementById('section-items').classList.contains('active')) {
+    buildFilterOptions(); renderItems()
+  }
+}
+
+// ===== DATE HELPERS =====
+function today() { return new Date().toISOString().split('T')[0] }
+function daysUntil(d) { if (!d) return null; return Math.ceil((new Date(d) - new Date(today())) / 86400000) }
+function formatDate(d) {
+  if (!d) return '無到期日'
+  const dt = new Date(d)
+  return `${dt.getFullYear()}/${String(dt.getMonth()+1).padStart(2,'0')}/${String(dt.getDate()).padStart(2,'0')}`
+}
+function getStatus(item) {
+  if (!item.expiry_date) return 'no-expiry'
+  const d = daysUntil(item.expiry_date)
+  if (d < 0) return 'expired'
+  if (d <= 7) return 'expiring-soon'
+  return 'ok'
+}
+function expiryLabel(item) {
+  const s = getStatus(item)
+  if (s === 'no-expiry') return { text: '無到期日', cls: 'no-expiry' }
+  const d = daysUntil(item.expiry_date)
+  if (s === 'expired') return { text: `已過期 ${Math.abs(d)} 天`, cls: 'expired' }
+  if (s === 'expiring-soon') return { text: d === 0 ? '今天到期！' : `還有 ${d} 天到期`, cls: 'expiring-soon' }
+  return { text: `${formatDate(item.expiry_date)} 到期`, cls: 'ok' }
+}
+
+// ===== NAV =====
+function showSection(id) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'))
+  document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'))
+  document.getElementById('section-' + id).classList.add('active')
+  event.target.classList.add('active')
+  if (id === 'dashboard') renderDashboard()
+  if (id === 'items') { buildFilterOptions(); renderItems() }
+  if (id === 'settings') renderSettings()
+}
+
+// ===== DASHBOARD =====
+function renderDashboard() {
+  const expired = items.filter(i => getStatus(i) === 'expired')
+  const soon = items.filter(i => getStatus(i) === 'expiring-soon')
+  document.getElementById('stat-expired').textContent = expired.length
+  document.getElementById('stat-soon').textContent = soon.length
+  document.getElementById('stat-total').textContent = items.length
+
+  const alertsEl = document.getElementById('alerts-container')
+  alertsEl.innerHTML = ''
+  if (expired.length) alertsEl.innerHTML += `<div class="alert danger">⛔ 有 ${expired.length} 件物品已過期！</div>`
+  if (soon.length) alertsEl.innerHTML += `<div class="alert warning">⏰ 有 ${soon.length} 件物品將在 7 天內到期。</div>`
+
+  const urgent = [...expired, ...soon].sort((a,b) => {
+    if (!a.expiry_date) return 1; if (!b.expiry_date) return -1
+    return new Date(a.expiry_date) - new Date(b.expiry_date)
+  })
+  const urgentEl = document.getElementById('urgent-list')
+  urgentEl.innerHTML = urgent.length === 0
+    ? '<div class="empty"><div class="empty-icon">✅</div><p>目前沒有需要注意的物品</p></div>'
+    : urgent.map(miniCard).join('')
+
+  const locMap = {}
+  items.forEach(i => { locMap[i.location] = (locMap[i.location] || 0) + 1 })
+  const locEl = document.getElementById('location-breakdown')
+  locEl.innerHTML = Object.keys(locMap).length === 0
+    ? '<p style="color:var(--gray-400);font-size:14px">尚無資料</p>'
+    : Object.entries(locMap).sort((a,b) => b[1]-a[1]).map(([loc, cnt]) =>
+        `<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--gray-100)">
+          <span style="font-size:14px">${loc}</span>
+          <span style="font-weight:700;color:var(--primary)">${cnt} 件</span>
+        </div>`).join('')
+}
+
+function miniCard(item) {
+  const lbl = expiryLabel(item)
+  return `<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--gray-100)">
+    <span style="font-size:22px">${catIcons[item.category]||'📦'}</span>
+    <div style="flex:1"><div style="font-weight:600;font-size:14px">${item.name}</div><div style="font-size:12px;color:var(--gray-600)">${item.location}</div></div>
+    <div class="expiry-label ${lbl.cls}" style="font-size:12px">${lbl.text}</div>
+  </div>`
+}
+
+// ===== ITEM LIST =====
+function buildFilterOptions() {
+  const cats = [...new Set(items.map(i => i.category))]
+  const locs = [...new Set(items.map(i => i.location))]
+  const catSel = document.getElementById('filter-cat')
+  const locSel = document.getElementById('filter-loc')
+  const cv = catSel.value, lv = locSel.value
+  catSel.innerHTML = '<option value="">全部分類</option>' + cats.map(c => `<option value="${c}">${catIcons[c]||''} ${c}</option>`).join('')
+  locSel.innerHTML = '<option value="">全部位置</option>' + locs.map(l => `<option value="${l}">${l}</option>`).join('')
+  catSel.value = cv; locSel.value = lv
+}
+
+function renderItems() {
+  const q = document.getElementById('search-input').value.toLowerCase()
+  const cat = document.getElementById('filter-cat').value
+  const loc = document.getElementById('filter-loc').value
+  const sortBy = document.getElementById('sort-by').value
+
+  let filtered = items.filter(i => {
+    if (q && !i.name.toLowerCase().includes(q)) return false
+    if (cat && i.category !== cat) return false
+    if (loc && i.location !== loc) return false
+    return true
+  })
+
+  filtered.sort((a, b) => {
+    if (sortBy === 'expiry') {
+      if (!a.expiry_date && !b.expiry_date) return 0
+      if (!a.expiry_date) return 1; if (!b.expiry_date) return -1
+      return new Date(a.expiry_date) - new Date(b.expiry_date)
+    }
+    if (sortBy === 'name') return a.name.localeCompare(b.name, 'zh-TW')
+    if (sortBy === 'category') return a.category.localeCompare(b.category, 'zh-TW')
+    if (sortBy === 'location') return a.location.localeCompare(b.location, 'zh-TW')
+  })
+
+  const el = document.getElementById('items-list')
+  if (filtered.length === 0) {
+    el.innerHTML = '<div class="empty"><div class="empty-icon">📭</div><p>找不到符合的物品</p></div>'
+    return
+  }
+
+  el.innerHTML = filtered.map(item => {
+    const status = getStatus(item)
+    const lbl = expiryLabel(item)
+    return `<div class="item-card ${status}">
+      <div class="item-icon">${catIcons[item.category]||'📦'}</div>
+      <div class="item-info">
+        <div class="item-name">${item.name}</div>
+        <div class="item-meta">
+          <span class="tag">${item.category}</span>
+          <span class="tag location">📍 ${item.location}</span>
+          <span class="tag qty">× ${item.quantity}${item.unit||''}</span>
+          ${item.barcode ? `<span class="tag">🔢 ${item.barcode}</span>` : ''}
+        </div>
+        <div class="expiry-label ${lbl.cls}">${lbl.text}</div>
+        ${item.note ? `<div style="font-size:12px;color:var(--gray-400);margin-top:4px">${item.note}</div>` : ''}
+      </div>
+      <div class="item-actions">
+        <button class="btn-icon" onclick="openEdit('${item.id}')">✏️</button>
+        <button class="btn-icon delete" onclick="deleteItem('${item.id}')">🗑️</button>
+      </div>
+    </div>`
+  }).join('')
+}
+
+// ===== ADD ITEM =====
+async function addItem() {
+  const name = document.getElementById('add-name').value.trim()
+  if (!name) { alert('請輸入物品名稱！'); return }
+  const btn = document.getElementById('add-btn')
+  btn.disabled = true; btn.textContent = '新增中...'
+
+  const { error } = await db.from('items').insert({
+    household_id: currentHousehold.id,
+    name,
+    category: document.getElementById('add-cat').value,
+    location: document.getElementById('add-loc').value,
+    quantity: parseInt(document.getElementById('add-qty').value) || 1,
+    unit: document.getElementById('add-unit').value.trim(),
+    expiry_date: document.getElementById('add-expiry').value || null,
+    note: document.getElementById('add-note').value.trim(),
+    added_by: currentUser.id
+  })
+
+  btn.disabled = false; btn.textContent = '新增物品'
+  if (error) { alert('新增失敗，請再試一次'); return }
+
+  document.getElementById('add-name').value = ''
+  document.getElementById('add-qty').value = '1'
+  document.getElementById('add-unit').value = ''
+  document.getElementById('add-expiry').value = ''
+  document.getElementById('add-note').value = ''
+
+  await loadItems()
+  alert('✅ 物品已新增！')
+}
+
+// ===== DELETE =====
+async function deleteItem(id) {
+  if (!confirm('確定要刪除這個物品嗎？')) return
+  await db.from('items').delete().eq('id', id)
+  await loadItems()
+  renderItems()
+  buildFilterOptions()
+}
+
+// ===== EDIT =====
+function openEdit(id) {
+  const item = items.find(i => i.id === id)
+  if (!item) return
+  document.getElementById('edit-id').value = id
+  document.getElementById('edit-name').value = item.name
+  document.getElementById('edit-cat').value = item.category
+  document.getElementById('edit-loc').value = item.location
+  document.getElementById('edit-qty').value = item.quantity
+  document.getElementById('edit-unit').value = item.unit || ''
+  document.getElementById('edit-expiry').value = item.expiry_date || ''
+  document.getElementById('edit-note').value = item.note || ''
+  document.getElementById('edit-modal').classList.add('open')
+}
+
+function closeModal() { document.getElementById('edit-modal').classList.remove('open') }
+
+async function saveEdit() {
+  const id = document.getElementById('edit-id').value
+  const { error } = await db.from('items').update({
+    name: document.getElementById('edit-name').value.trim(),
+    category: document.getElementById('edit-cat').value,
+    location: document.getElementById('edit-loc').value,
+    quantity: parseInt(document.getElementById('edit-qty').value) || 1,
+    unit: document.getElementById('edit-unit').value.trim(),
+    expiry_date: document.getElementById('edit-expiry').value || null,
+    note: document.getElementById('edit-note').value.trim()
+  }).eq('id', id)
+
+  if (error) { alert('儲存失敗，請再試一次'); return }
+  closeModal()
+  await loadItems()
+  renderItems()
+}
+
+// ===== SCANNER =====
+let scannerRunning = false
+
+function startScanner() {
+  const container = document.getElementById('scanner-container')
+  container.innerHTML = '<div id="quagga-video" style="width:100%;height:100%"></div><div class="scan-line"></div>'
+
+  Quagga.init({
+    inputStream: { name: 'Live', type: 'LiveStream', target: document.getElementById('quagga-video'),
+      constraints: { facingMode: 'environment', width: { min: 640 }, height: { min: 480 } } },
+    decoder: { readers: ['ean_reader','ean_8_reader','code_128_reader','upc_reader','upc_e_reader'] },
+    locate: true
+  }, function(err) {
+    if (err) {
+      container.innerHTML = '<div style="color:white;text-align:center;padding:20px"><p>⚠️ 相機無法啟動，請確認已允許相機權限</p></div>'
+      return
+    }
+    Quagga.start()
+    scannerRunning = true
+    document.getElementById('btn-start-scan').style.display = 'none'
+    document.getElementById('btn-stop-scan').style.display = 'block'
+    document.getElementById('scan-result').textContent = '對準商品條碼...'
+  })
+
+  Quagga.onDetected(function(result) {
+    stopScanner()
+    handleBarcode(result.codeResult.code)
+  })
+}
+
+function stopScanner() {
+  if (scannerRunning) { try { Quagga.stop() } catch(e) {}; scannerRunning = false }
+  document.getElementById('btn-start-scan').style.display = 'block'
+  document.getElementById('btn-stop-scan').style.display = 'none'
+  document.getElementById('scanner-container').innerHTML =
+    '<div style="color:white;text-align:center;padding:20px"><div style="font-size:40px;margin-bottom:10px">📷</div><p>點擊「開始掃描」啟動相機</p></div>'
+}
+
+function handleBarcode(code) {
+  document.getElementById('scan-result').textContent = '✅ 偵測到條碼：' + code
+  document.getElementById('scan-result').className = 'success'
+  document.getElementById('scan-barcode').value = code
+  document.getElementById('scan-name').value = ''
+  document.getElementById('scan-expiry').value = ''
+  document.getElementById('scan-form-card').style.display = 'block'
+  const existing = items.find(i => i.barcode === code)
+  if (existing) {
+    document.getElementById('scan-name').value = existing.name
+    document.getElementById('scan-cat').value = existing.category
+    document.getElementById('scan-loc').value = existing.location
+  }
+  document.getElementById('scan-name').focus()
+}
+
+async function addScannedItem() {
+  const name = document.getElementById('scan-name').value.trim()
+  if (!name) { alert('請輸入物品名稱！'); return }
+
+  await db.from('items').insert({
+    household_id: currentHousehold.id,
+    name,
+    category: document.getElementById('scan-cat').value,
+    location: document.getElementById('scan-loc').value,
+    quantity: parseInt(document.getElementById('scan-qty').value) || 1,
+    unit: '',
+    expiry_date: document.getElementById('scan-expiry').value || null,
+    barcode: document.getElementById('scan-barcode').value,
+    added_by: currentUser.id
+  })
+
+  document.getElementById('scan-form-card').style.display = 'none'
+  document.getElementById('scan-result').textContent = ''
+  await loadItems()
+  alert('✅ 物品已新增！')
+}
+
+// ===== SETTINGS =====
+async function renderSettings() {
+  if (!currentHousehold) return
+  document.getElementById('display-invite-code').textContent = currentHousehold.invite_code
+
+  const { data: members } = await db
+    .from('profiles')
+    .select('email, created_at')
+    .eq('household_id', currentHousehold.id)
+
+  const el = document.getElementById('members-list')
+  el.innerHTML = (members || []).map(m => {
+    const initials = m.email ? m.email[0].toUpperCase() : '?'
+    const isOwner = currentHousehold.owner_id && m.id === currentHousehold.owner_id
+    return `<div class="member-row">
+      <div class="member-avatar">${initials}</div>
+      <div class="member-info">
+        <div class="member-email">${m.email}</div>
+        <div class="member-role">${isOwner ? '擁有者' : '成員'}</div>
+      </div>
+    </div>`
+  }).join('')
+}
+
+function copyInviteCode() {
+  const code = currentHousehold?.invite_code
+  if (!code) return
+  navigator.clipboard.writeText(code).then(() => alert('✅ 邀請碼已複製：' + code))
+    .catch(() => alert('邀請碼：' + code))
+}
+
+// Modal close on overlay click
+document.getElementById('edit-modal').addEventListener('click', function(e) {
+  if (e.target === this) closeModal()
+})
+</script>
+</body>
+</html>
