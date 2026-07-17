@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>家居物品管理</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
 <style>
   :root {
     --primary: #4f7cff; --primary-dark: #3a63e0; --danger: #ef4444;
@@ -55,6 +54,8 @@
 
   .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px; }
   .stat { background: white; border-radius: var(--radius); box-shadow: var(--shadow); padding: 16px 12px; text-align: center; }
+  .stat:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.12); transition: all .15s; }
+  .stat.stat-active { box-shadow: 0 0 0 3px var(--primary); }
   .stat-num { font-size: 32px; font-weight: 700; }
   .stat-label { font-size: 12px; color: var(--gray-600); margin-top: 4px; }
   .stat.danger .stat-num { color: var(--danger); }
@@ -112,14 +113,12 @@
   .invite-code-box { background: var(--gray-50); border: 2px dashed var(--gray-200); border-radius: 12px; padding: 20px; text-align: center; }
   .invite-code { font-size: 36px; font-weight: 900; letter-spacing: 8px; color: var(--primary); font-family: monospace; }
 
-  #scanner-container { position: relative; background: black; border-radius: var(--radius); overflow: hidden; width: 100%; aspect-ratio: 4/3; margin-bottom: 16px; display: flex; align-items: center; justify-content: center; }
-  #scanner-container video { width: 100%; height: 100%; object-fit: cover; }
-  #scanner-container canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
-  .scan-line { position: absolute; left: 10%; right: 10%; height: 2px; background: var(--primary); box-shadow: 0 0 8px var(--primary); animation: scan 2s ease-in-out infinite; }
-  @keyframes scan { 0%,100% { top: 20%; } 50% { top: 80%; } }
-  #scan-result { text-align: center; font-weight: 600; margin-bottom: 12px; min-height: 24px; font-size: 14px; }
-  #scan-result.success { color: var(--success); }
-  .scanner-btns { display: flex; gap: 10px; }
+  .photo-preview { width: 100%; aspect-ratio: 4/3; border-radius: var(--radius); background: var(--gray-100); display: flex; align-items: center; justify-content: center; overflow: hidden; margin-bottom: 14px; border: 2px dashed var(--gray-200); cursor: pointer; }
+  .photo-preview img { width: 100%; height: 100%; object-fit: cover; }
+  .photo-preview-placeholder { text-align: center; color: var(--gray-400); }
+  .photo-preview-placeholder .icon { font-size: 48px; margin-bottom: 8px; }
+  .item-photo { width: 56px; height: 56px; border-radius: 10px; object-fit: cover; flex-shrink: 0; }
+  .item-photo-placeholder { width: 56px; height: 56px; border-radius: 10px; background: var(--gray-100); display: flex; align-items: center; justify-content: center; font-size: 28px; flex-shrink: 0; }
 
   .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 200; align-items: center; justify-content: center; padding: 20px; }
   .modal-overlay.open { display: flex; }
@@ -205,16 +204,17 @@
     <button class="active" onclick="showSection('dashboard',this)">📊 總覽</button>
     <button onclick="showSection('items',this)">📦 物品</button>
     <button onclick="showSection('add',this)">➕ 新增</button>
-    <button onclick="showSection('scanner',this)">📷 掃描</button>
+    <button onclick="showSection('scanner',this)">📷 拍照</button>
     <button onclick="showSection('settings',this)">⚙️ 設定</button>
   </nav>
   <main>
     <div id="section-dashboard" class="section active">
       <div class="stats">
-        <div class="stat danger"><div class="stat-num" id="stat-expired">0</div><div class="stat-label">已過期</div></div>
-        <div class="stat warning"><div class="stat-num" id="stat-soon">0</div><div class="stat-label">7天內到期</div></div>
-        <div class="stat ok"><div class="stat-num" id="stat-total">0</div><div class="stat-label">總物品數</div></div>
+        <div class="stat danger" id="stat-expired" onclick="showStatItems('expired')" style="cursor:pointer" title="點擊查看詳細"><div class="stat-num" id="stat-expired-num">0</div><div class="stat-label">已過期</div></div>
+        <div class="stat warning" id="stat-soon" onclick="showStatItems('soon')" style="cursor:pointer" title="點擊查看詳細"><div class="stat-num" id="stat-soon-num">0</div><div class="stat-label">7天內到期</div></div>
+        <div class="stat ok" id="stat-total" onclick="showStatItems('total')" style="cursor:pointer" title="點擊查看詳細"><div class="stat-num" id="stat-total-num">0</div><div class="stat-label">總物品數</div></div>
       </div>
+      <div id="stat-detail" style="display:none"></div>
       <div id="alerts-container"></div>
       <div class="card"><div class="card-title">⚠️ 需要注意的物品</div><div id="urgent-list"></div></div>
       <div class="card"><div class="card-title">📍 各位置物品數</div><div id="location-breakdown"></div></div>
@@ -241,20 +241,25 @@
         <div class="form-group"><label>物品名稱 *</label><input type="text" id="add-name" placeholder="例：牛奶、維他命C、洗碗精"></div>
         <div class="form-row">
           <div class="form-group"><label>分類</label>
-            <select id="add-cat">
+            <select id="add-cat" onchange="toggleCustomCat('add')">
               <option value="食品">🍎 食品</option><option value="飲料">🧃 飲料</option>
               <option value="藥品">💊 藥品</option><option value="保養品">🧴 保養品</option>
               <option value="清潔用品">🧹 清潔用品</option><option value="3C">📱 3C</option>
-              <option value="衣物">👕 衣物</option><option value="其他">📦 其他</option>
+              <option value="衣物">👕 衣物</option><option value="化妝品">💄 化妝品</option>
+              <option value="小孩食品">🧒 小孩食品</option><option value="寵物食品">🐾 寵物食品</option>
+              <option value="__custom__">✏️ 自訂分類...</option>
             </select>
+            <input type="text" id="add-cat-custom" placeholder="輸入自訂分類名稱" style="display:none;margin-top:8px">
           </div>
           <div class="form-group"><label>存放位置</label>
-            <select id="add-loc">
+            <select id="add-loc" onchange="toggleCustomLoc('add')">
               <option value="冰箱">🧊 冰箱</option><option value="廚房">🍳 廚房</option>
-              <option value="客廳">🛋️ 客廳</option><option value="臥室">🛏️ 臥室</option>
-              <option value="浴室">🚿 浴室</option><option value="儲藏室">🗄️ 儲藏室</option>
-              <option value="陽台">🌿 陽台</option><option value="其他">📍 其他</option>
+              <option value="餐桌">🍽️ 餐桌</option><option value="客廳">🛋️ 客廳</option>
+              <option value="臥室">🛏️ 臥室</option><option value="浴室">🚿 浴室</option>
+              <option value="儲藏室">🗄️ 儲藏室</option><option value="陽台">🌿 陽台</option>
+              <option value="__custom__">✏️ 自訂位置...</option>
             </select>
+            <input type="text" id="add-loc-custom" placeholder="輸入自訂位置名稱" style="display:none;margin-top:8px">
           </div>
         </div>
         <div class="form-row">
@@ -269,41 +274,51 @@
 
     <div id="section-scanner" class="section">
       <div class="card">
-        <div class="card-title">📷 掃描條碼</div>
-        <div id="scanner-container"><div style="color:white;text-align:center;padding:20px"><div style="font-size:40px;margin-bottom:10px">📷</div><p>點擊「開始掃描」啟動相機</p></div></div>
-        <div id="scan-result"></div>
-        <div class="scanner-btns">
-          <button class="btn btn-primary" id="btn-start-scan" onclick="startScanner()" style="flex:1">開始掃描</button>
-          <button class="btn btn-secondary" id="btn-stop-scan" onclick="stopScanner()" style="flex:1;display:none">停止掃描</button>
+        <div class="card-title">📷 拍照新增物品</div>
+        <input type="file" id="photo-input" accept="image/*" capture="environment" style="display:none" onchange="onPhotoSelected(this)">
+        <div class="photo-preview" id="photo-preview" onclick="document.getElementById('photo-input').click()">
+          <div class="photo-preview-placeholder">
+            <div class="icon">📷</div>
+            <p style="font-size:14px">點擊拍照或選擇照片</p>
+          </div>
+        </div>
+        <div style="display:flex;gap:10px">
+          <button class="btn btn-primary" style="flex:1" onclick="document.getElementById('photo-input').click()">📷 拍照 / 選照片</button>
+          <button class="btn btn-secondary" style="flex:1" id="btn-clear-photo" onclick="clearPhoto()" style="display:none">✕ 移除照片</button>
         </div>
       </div>
-      <div id="scan-form-card" class="card" style="display:none">
-        <div class="card-title">確認商品資訊</div>
-        <div class="form-group"><label>條碼</label><input type="text" id="scan-barcode" readonly style="background:var(--gray-100)"></div>
+      <div id="photo-form-card" class="card">
+        <div class="card-title">填寫物品資訊</div>
         <div class="form-group"><label>物品名稱 *</label><input type="text" id="scan-name" placeholder="請輸入名稱"></div>
         <div class="form-row">
           <div class="form-group"><label>分類</label>
-            <select id="scan-cat">
+            <select id="scan-cat" onchange="toggleCustomCat('scan')">
               <option value="食品">🍎 食品</option><option value="飲料">🧃 飲料</option>
               <option value="藥品">💊 藥品</option><option value="保養品">🧴 保養品</option>
               <option value="清潔用品">🧹 清潔用品</option><option value="3C">📱 3C</option>
-              <option value="衣物">👕 衣物</option><option value="其他">📦 其他</option>
+              <option value="衣物">👕 衣物</option><option value="化妝品">💄 化妝品</option>
+              <option value="小孩食品">🧒 小孩食品</option><option value="寵物食品">🐾 寵物食品</option>
+              <option value="__custom__">✏️ 自訂分類...</option>
             </select>
+            <input type="text" id="scan-cat-custom" placeholder="輸入自訂分類名稱" style="display:none;margin-top:8px">
           </div>
           <div class="form-group"><label>位置</label>
-            <select id="scan-loc">
+            <select id="scan-loc" onchange="toggleCustomLoc('scan')">
               <option value="冰箱">🧊 冰箱</option><option value="廚房">🍳 廚房</option>
-              <option value="客廳">🛋️ 客廳</option><option value="臥室">🛏️ 臥室</option>
-              <option value="浴室">🚿 浴室</option><option value="儲藏室">🗄️ 儲藏室</option>
-              <option value="陽台">🌿 陽台</option><option value="其他">📍 其他</option>
+              <option value="餐桌">🍽️ 餐桌</option><option value="客廳">🛋️ 客廳</option>
+              <option value="臥室">🛏️ 臥室</option><option value="浴室">🚿 浴室</option>
+              <option value="儲藏室">🗄️ 儲藏室</option><option value="陽台">🌿 陽台</option>
+              <option value="__custom__">✏️ 自訂位置...</option>
             </select>
+            <input type="text" id="scan-loc-custom" placeholder="輸入自訂位置名稱" style="display:none;margin-top:8px">
           </div>
         </div>
         <div class="form-row">
           <div class="form-group"><label>數量</label><input type="number" id="scan-qty" value="1" min="1"></div>
           <div class="form-group"><label>到期日</label><input type="date" id="scan-expiry"></div>
         </div>
-        <button class="btn btn-primary btn-block" onclick="addScannedItem()">加入清單</button>
+        <div class="form-group"><label>備註（選填）</label><input type="text" id="scan-note" placeholder="補充說明..."></div>
+        <button class="btn btn-primary btn-block" id="photo-add-btn" onclick="addPhotoItem()">新增物品</button>
       </div>
     </div>
 
@@ -334,20 +349,25 @@
     <div class="form-group"><label>物品名稱</label><input type="text" id="edit-name"></div>
     <div class="form-row">
       <div class="form-group"><label>分類</label>
-        <select id="edit-cat">
+        <select id="edit-cat" onchange="toggleCustomCat('edit')">
           <option value="食品">🍎 食品</option><option value="飲料">🧃 飲料</option>
           <option value="藥品">💊 藥品</option><option value="保養品">🧴 保養品</option>
           <option value="清潔用品">🧹 清潔用品</option><option value="3C">📱 3C</option>
-          <option value="衣物">👕 衣物</option><option value="其他">📦 其他</option>
+          <option value="衣物">👕 衣物</option><option value="化妝品">💄 化妝品</option>
+          <option value="小孩食品">🧒 小孩食品</option><option value="寵物食品">🐾 寵物食品</option>
+          <option value="__custom__">✏️ 自訂分類...</option>
         </select>
+        <input type="text" id="edit-cat-custom" placeholder="輸入自訂分類名稱" style="display:none;margin-top:8px">
       </div>
       <div class="form-group"><label>位置</label>
-        <select id="edit-loc">
+        <select id="edit-loc" onchange="toggleCustomLoc('edit')">
           <option value="冰箱">🧊 冰箱</option><option value="廚房">🍳 廚房</option>
-          <option value="客廳">🛋️ 客廳</option><option value="臥室">🛏️ 臥室</option>
-          <option value="浴室">🚿 浴室</option><option value="儲藏室">🗄️ 儲藏室</option>
-          <option value="陽台">🌿 陽台</option><option value="其他">📍 其他</option>
+          <option value="餐桌">🍽️ 餐桌</option><option value="客廳">🛋️ 客廳</option>
+          <option value="臥室">🛏️ 臥室</option><option value="浴室">🚿 浴室</option>
+          <option value="儲藏室">🗄️ 儲藏室</option><option value="陽台">🌿 陽台</option>
+          <option value="__custom__">✏️ 自訂位置...</option>
         </select>
+        <input type="text" id="edit-loc-custom" placeholder="輸入自訂位置名稱" style="display:none;margin-top:8px">
       </div>
     </div>
     <div class="form-row">
@@ -356,6 +376,12 @@
     </div>
     <div class="form-group"><label>到期日</label><input type="date" id="edit-expiry"></div>
     <div class="form-group"><label>備註</label><input type="text" id="edit-note"></div>
+    <div class="form-group">
+      <label>照片</label>
+      <input type="file" id="edit-photo-input" accept="image/*" capture="environment" style="display:none" onchange="onEditPhotoSelected(this)">
+      <div id="edit-photo-preview" style="margin-bottom:8px"></div>
+      <button type="button" class="btn btn-secondary" style="font-size:13px;padding:8px 14px" onclick="document.getElementById('edit-photo-input').click()">📷 更換照片</button>
+    </div>
     <div class="modal-footer">
       <button class="btn btn-secondary" style="flex:1" onclick="closeModal()">取消</button>
       <button class="btn btn-primary" style="flex:1" onclick="saveEdit()">儲存</button>
@@ -364,13 +390,66 @@
 </div>
 
 <script>
+const PRESET_LOCS = ['冰箱','廚房','餐桌','客廳','臥室','浴室','儲藏室','陽台']
+const PRESET_CATS = ['食品','飲料','藥品','保養品','清潔用品','3C','衣物','化妝品','小孩食品','寵物食品']
+
+function toggleCustomLoc(prefix) {
+  const sel = document.getElementById(prefix + '-loc')
+  const inp = document.getElementById(prefix + '-loc-custom')
+  if (sel.value === '__custom__') { inp.style.display = 'block'; inp.focus() }
+  else { inp.style.display = 'none'; inp.value = '' }
+}
+
+function getLocValue(prefix) {
+  const sel = document.getElementById(prefix + '-loc')
+  if (sel.value === '__custom__') {
+    const v = document.getElementById(prefix + '-loc-custom').value.trim()
+    return v || '其他'
+  }
+  return sel.value
+}
+
+function toggleCustomCat(prefix) {
+  const sel = document.getElementById(prefix + '-cat')
+  const inp = document.getElementById(prefix + '-cat-custom')
+  if (sel.value === '__custom__') { inp.style.display = 'block'; inp.focus() }
+  else { inp.style.display = 'none'; inp.value = '' }
+}
+function getCatValue(prefix) {
+  const sel = document.getElementById(prefix + '-cat')
+  if (sel.value === '__custom__') {
+    const v = document.getElementById(prefix + '-cat-custom').value.trim()
+    return v || '其他'
+  }
+  return sel.value
+}
+function setCatValue(prefix, cat) {
+  const sel = document.getElementById(prefix + '-cat')
+  const inp = document.getElementById(prefix + '-cat-custom')
+  if (PRESET_CATS.includes(cat)) {
+    sel.value = cat; inp.style.display = 'none'; inp.value = ''
+  } else {
+    sel.value = '__custom__'; inp.style.display = 'block'; inp.value = cat
+  }
+}
+
+function setLocValue(prefix, loc) {
+  const sel = document.getElementById(prefix + '-loc')
+  const inp = document.getElementById(prefix + '-loc-custom')
+  if (PRESET_LOCS.includes(loc)) {
+    sel.value = loc; inp.style.display = 'none'; inp.value = ''
+  } else {
+    sel.value = '__custom__'; inp.style.display = 'block'; inp.value = loc
+  }
+}
+
 const SUPABASE_URL = 'https://fnsughnssooceatrtbad.supabase.co'
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZuc3VnaG5zc29vY2VhdHJ0YmFkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQyNTUzMTYsImV4cCI6MjA5OTgzMTMxNn0.5v4uCfCMsa0cbEMxkvKPmJHJayjE_iyAfvw5pehh6Pg'
 const { createClient } = supabase
 const db = createClient(SUPABASE_URL, SUPABASE_KEY)
 
 let currentUser = null, currentHousehold = null, items = [], authMode = 'login'
-const catIcons = {'食品':'🍎','飲料':'🧃','藥品':'💊','保養品':'🧴','清潔用品':'🧹','3C':'📱','衣物':'👕','其他':'📦'}
+const catIcons = {'食品':'🍎','飲料':'🧃','藥品':'💊','保養品':'🧴','清潔用品':'🧹','3C':'📱','衣物':'👕','化妝品':'💄','小孩食品':'🧒','寵物食品':'🐾','其他':'📦'}
 
 db.auth.onAuthStateChange(async (event, session) => {
   if (session?.user) { currentUser = session.user; await loadProfile() }
@@ -513,12 +592,50 @@ function showSection(id, btn) {
   if (id === 'settings') renderSettings()
 }
 
+let activeStatFilter = null
+function showStatItems(type) {
+  const detailEl = document.getElementById('stat-detail')
+  if (activeStatFilter === type) {
+    activeStatFilter = null; detailEl.style.display = 'none'
+    document.querySelectorAll('.stat').forEach(s => s.classList.remove('stat-active'))
+    return
+  }
+  activeStatFilter = type
+  document.querySelectorAll('.stat').forEach(s => s.classList.remove('stat-active'))
+  document.getElementById('stat-' + type).classList.add('stat-active')
+  let filtered
+  if (type === 'expired') filtered = items.filter(i => getStatus(i) === 'expired')
+  else if (type === 'soon') filtered = items.filter(i => getStatus(i) === 'expiring-soon')
+  else filtered = [...items]
+  filtered.sort((a,b) => {
+    if (!a.expiry_date && !b.expiry_date) return 0
+    if (!a.expiry_date) return 1; if (!b.expiry_date) return -1
+    return new Date(a.expiry_date) - new Date(b.expiry_date)
+  })
+  const titles = { expired:'已過期物品', soon:'7天內到期物品', total:'所有物品' }
+  detailEl.style.display = 'block'
+  detailEl.innerHTML = `<div class="card">
+    <div class="card-title" style="display:flex;justify-content:space-between;align-items:center">
+      <span>${titles[type]}（${filtered.length} 件）</span>
+      <button onclick="showStatItems('${type}')" style="background:none;border:none;cursor:pointer;color:var(--gray-400);font-size:20px;line-height:1">✕</button>
+    </div>
+    ${filtered.length===0
+      ? '<div class="empty"><div class="empty-icon">✅</div><p>沒有符合的物品</p></div>'
+      : filtered.map(miniCard).join('')
+    }
+  </div>`
+}
+
 function renderDashboard() {
   const expired = items.filter(i => getStatus(i)==='expired')
   const soon = items.filter(i => getStatus(i)==='expiring-soon')
-  document.getElementById('stat-expired').textContent = expired.length
-  document.getElementById('stat-soon').textContent = soon.length
-  document.getElementById('stat-total').textContent = items.length
+  document.getElementById('stat-expired-num').textContent = expired.length
+  document.getElementById('stat-soon-num').textContent = soon.length
+  document.getElementById('stat-total-num').textContent = items.length
+  // 重置點選狀態
+  activeStatFilter = null
+  document.getElementById('stat-detail').style.display = 'none'
+  document.querySelectorAll('.stat').forEach(s => s.classList.remove('stat-active'))
   const alertsEl = document.getElementById('alerts-container')
   alertsEl.innerHTML = ''
   if (expired.length) alertsEl.innerHTML += `<div class="alert danger">⛔ 有 ${expired.length} 件物品已過期！</div>`
@@ -584,8 +701,11 @@ function renderItems() {
   if(filtered.length===0){el.innerHTML='<div class="empty"><div class="empty-icon">📭</div><p>找不到符合的物品</p></div>';return}
   el.innerHTML=filtered.map(item=>{
     const status=getStatus(item), lbl=expiryLabel(item)
+    const thumb = item.photo_url
+      ? `<img src="${item.photo_url}" class="item-photo" loading="lazy">`
+      : `<div class="item-photo-placeholder">${catIcons[item.category]||'📦'}</div>`
     return `<div class="item-card ${status}">
-      <div class="item-icon">${catIcons[item.category]||'📦'}</div>
+      ${thumb}
       <div class="item-info">
         <div class="item-name">${item.name}</div>
         <div class="item-meta">
@@ -612,8 +732,8 @@ async function addItem() {
   btn.disabled=true; btn.textContent='新增中...'
   const {error}=await db.from('items').insert({
     household_id:currentHousehold.id, name,
-    category:document.getElementById('add-cat').value,
-    location:document.getElementById('add-loc').value,
+    category:getCatValue('add'),
+    location:getLocValue('add'),
     quantity:parseInt(document.getElementById('add-qty').value)||1,
     unit:document.getElementById('add-unit').value.trim(),
     expiry_date:document.getElementById('add-expiry').value||null,
@@ -641,8 +761,13 @@ function openEdit(id) {
   const item=items.find(i=>i.id===id); if(!item)return
   document.getElementById('edit-id').value=id
   document.getElementById('edit-name').value=item.name
-  document.getElementById('edit-cat').value=item.category
-  document.getElementById('edit-loc').value=item.location
+  setCatValue('edit', item.category)
+  setLocValue('edit', item.location)
+  editSelectedPhotoFile = null
+  const prevEl = document.getElementById('edit-photo-preview')
+  prevEl.innerHTML = item.photo_url
+    ? `<img src="${item.photo_url}" style="width:80px;height:80px;object-fit:cover;border-radius:10px">`
+    : '<span style="font-size:12px;color:var(--gray-400)">尚無照片</span>'
   document.getElementById('edit-qty').value=item.quantity
   document.getElementById('edit-unit').value=item.unit||''
   document.getElementById('edit-expiry').value=item.expiry_date||''
@@ -652,72 +777,89 @@ function openEdit(id) {
 function closeModal(){document.getElementById('edit-modal').classList.remove('open')}
 
 async function saveEdit() {
-  const id=document.getElementById('edit-id').value
-  const {error}=await db.from('items').update({
-    name:document.getElementById('edit-name').value.trim(),
-    category:document.getElementById('edit-cat').value,
-    location:document.getElementById('edit-loc').value,
-    quantity:parseInt(document.getElementById('edit-qty').value)||1,
-    unit:document.getElementById('edit-unit').value.trim(),
-    expiry_date:document.getElementById('edit-expiry').value||null,
-    note:document.getElementById('edit-note').value.trim()
-  }).eq('id',id)
-  if(error){alert('儲存失敗：'+error.message);return}
+  const id = document.getElementById('edit-id').value
+  let photo_url = items.find(i => i.id === id)?.photo_url || null
+  if (editSelectedPhotoFile) {
+    const uploaded = await uploadPhoto(editSelectedPhotoFile)
+    if (uploaded) photo_url = uploaded
+  }
+  const { error } = await db.from('items').update({
+    name: document.getElementById('edit-name').value.trim(),
+    category: getCatValue('edit'),
+    location: getLocValue('edit'),
+    quantity: parseInt(document.getElementById('edit-qty').value) || 1,
+    unit: document.getElementById('edit-unit').value.trim(),
+    expiry_date: document.getElementById('edit-expiry').value || null,
+    note: document.getElementById('edit-note').value.trim(),
+    photo_url
+  }).eq('id', id)
+  if (error) { alert('儲存失敗：' + error.message); return }
+  editSelectedPhotoFile = null
   closeModal(); await loadItems(); renderItems()
 }
 
-let scannerRunning=false
-function startScanner() {
-  const container=document.getElementById('scanner-container')
-  container.innerHTML='<div id="quagga-video" style="width:100%;height:100%"></div><div class="scan-line"></div>'
-  Quagga.init({
-    inputStream:{name:'Live',type:'LiveStream',target:document.getElementById('quagga-video'),
-      constraints:{facingMode:'environment',width:{min:640},height:{min:480}}},
-    decoder:{readers:['ean_reader','ean_8_reader','code_128_reader','upc_reader']},locate:true
-  },function(err){
-    if(err){container.innerHTML='<div style="color:white;text-align:center;padding:20px"><p>⚠️ 相機無法啟動</p></div>';return}
-    Quagga.start(); scannerRunning=true
-    document.getElementById('btn-start-scan').style.display='none'
-    document.getElementById('btn-stop-scan').style.display='block'
-    document.getElementById('scan-result').textContent='對準商品條碼...'
+let selectedPhotoFile = null
+let editSelectedPhotoFile = null
+
+function onPhotoSelected(input) {
+  const file = input.files[0]
+  if (!file) return
+  selectedPhotoFile = file
+  const url = URL.createObjectURL(file)
+  document.getElementById('photo-preview').innerHTML = `<img src="${url}" style="width:100%;height:100%;object-fit:cover;border-radius:var(--radius)">`
+  document.getElementById('btn-clear-photo').style.display = 'block'
+}
+
+function clearPhoto() {
+  selectedPhotoFile = null
+  document.getElementById('photo-input').value = ''
+  document.getElementById('photo-preview').innerHTML = `<div class="photo-preview-placeholder"><div class="icon">📷</div><p style="font-size:14px">點擊拍照或選擇照片</p></div>`
+  document.getElementById('btn-clear-photo').style.display = 'none'
+}
+
+function onEditPhotoSelected(input) {
+  const file = input.files[0]
+  if (!file) return
+  editSelectedPhotoFile = file
+  const url = URL.createObjectURL(file)
+  document.getElementById('edit-photo-preview').innerHTML = `<img src="${url}" style="width:80px;height:80px;object-fit:cover;border-radius:10px">`
+}
+
+async function uploadPhoto(file) {
+  const ext = file.name.split('.').pop() || 'jpg'
+  const path = `${currentUser.id}/${Date.now()}.${ext}`
+  const { error } = await db.storage.from('item-photos').upload(path, file, { upsert: true })
+  if (error) { console.error('上傳失敗:', error); return null }
+  const { data } = db.storage.from('item-photos').getPublicUrl(path)
+  return data.publicUrl
+}
+
+async function addPhotoItem() {
+  const name = document.getElementById('scan-name').value.trim()
+  if (!name) { alert('請輸入物品名稱！'); return }
+  const btn = document.getElementById('photo-add-btn')
+  btn.disabled = true; btn.textContent = '新增中...'
+  let photo_url = null
+  if (selectedPhotoFile) { photo_url = await uploadPhoto(selectedPhotoFile) }
+  const { error } = await db.from('items').insert({
+    household_id: currentHousehold.id, name,
+    category: getCatValue('scan'),
+    location: getLocValue('scan'),
+    quantity: parseInt(document.getElementById('scan-qty').value) || 1,
+    unit: '',
+    expiry_date: document.getElementById('scan-expiry').value || null,
+    note: document.getElementById('scan-note').value.trim(),
+    photo_url, added_by: currentUser.id
   })
-  Quagga.onDetected(function(result){stopScanner();handleBarcode(result.codeResult.code)})
-}
-function stopScanner() {
-  if(scannerRunning){try{Quagga.stop()}catch(e){};scannerRunning=false}
-  document.getElementById('btn-start-scan').style.display='block'
-  document.getElementById('btn-stop-scan').style.display='none'
-  document.getElementById('scanner-container').innerHTML='<div style="color:white;text-align:center;padding:20px"><div style="font-size:40px;margin-bottom:10px">📷</div><p>點擊「開始掃描」啟動相機</p></div>'
-}
-function handleBarcode(code) {
-  document.getElementById('scan-result').textContent='✅ 偵測到條碼：'+code
-  document.getElementById('scan-result').className='success'
-  document.getElementById('scan-barcode').value=code
-  document.getElementById('scan-name').value=''
-  document.getElementById('scan-expiry').value=''
-  document.getElementById('scan-form-card').style.display='block'
-  const existing=items.find(i=>i.barcode===code)
-  if(existing){
-    document.getElementById('scan-name').value=existing.name
-    document.getElementById('scan-cat').value=existing.category
-    document.getElementById('scan-loc').value=existing.location
-  }
-  document.getElementById('scan-name').focus()
-}
-async function addScannedItem() {
-  const name=document.getElementById('scan-name').value.trim()
-  if(!name){alert('請輸入物品名稱！');return}
-  await db.from('items').insert({
-    household_id:currentHousehold.id, name,
-    category:document.getElementById('scan-cat').value,
-    location:document.getElementById('scan-loc').value,
-    quantity:parseInt(document.getElementById('scan-qty').value)||1,
-    unit:'', expiry_date:document.getElementById('scan-expiry').value||null,
-    barcode:document.getElementById('scan-barcode').value, added_by:currentUser.id
-  })
-  document.getElementById('scan-form-card').style.display='none'
-  document.getElementById('scan-result').textContent=''
-  await loadItems(); alert('✅ 物品已新增！')
+  btn.disabled = false; btn.textContent = '新增物品'
+  if (error) { alert('新增失敗：' + error.message); return }
+  document.getElementById('scan-name').value = ''
+  document.getElementById('scan-qty').value = '1'
+  document.getElementById('scan-expiry').value = ''
+  document.getElementById('scan-note').value = ''
+  clearPhoto()
+  await loadItems()
+  alert('✅ 物品已新增！')
 }
 
 async function renderSettings() {
