@@ -8,18 +8,10 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
 <style>
   :root {
-    --primary: #4f7cff;
-    --primary-dark: #3a63e0;
-    --danger: #ef4444;
-    --warning: #f59e0b;
-    --success: #10b981;
-    --gray-50: #f9fafb;
-    --gray-100: #f3f4f6;
-    --gray-200: #e5e7eb;
-    --gray-400: #9ca3af;
-    --gray-600: #4b5563;
-    --gray-800: #1f2937;
-    --radius: 12px;
+    --primary: #4f7cff; --primary-dark: #3a63e0; --danger: #ef4444;
+    --warning: #f59e0b; --success: #10b981; --gray-50: #f9fafb;
+    --gray-100: #f3f4f6; --gray-200: #e5e7eb; --gray-400: #9ca3af;
+    --gray-600: #4b5563; --gray-800: #1f2937; --radius: 12px;
     --shadow: 0 2px 8px rgba(0,0,0,0.08);
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -47,13 +39,12 @@
   .header-left { display: flex; align-items: center; gap: 10px; }
   header h1 { font-size: 18px; font-weight: 700; color: var(--primary); }
   .household-badge { font-size: 12px; background: #eff6ff; color: var(--primary); padding: 3px 10px; border-radius: 99px; font-weight: 600; }
-  .btn-signout { background: none; border: none; cursor: pointer; color: var(--gray-400); font-size: 18px; padding: 4px 8px; border-radius: 8px; transition: background .15s; }
+  .btn-signout { background: none; border: none; cursor: pointer; color: var(--gray-400); font-size: 18px; padding: 4px 8px; border-radius: 8px; }
   .btn-signout:hover { background: var(--gray-100); }
 
   nav { background: white; border-bottom: 1px solid var(--gray-200); display: flex; overflow-x: auto; }
   nav button { flex: 1; min-width: 70px; padding: 12px 8px; background: none; border: none; border-bottom: 3px solid transparent; cursor: pointer; font-size: 13px; color: var(--gray-600); transition: all .2s; white-space: nowrap; }
   nav button.active { color: var(--primary); border-bottom-color: var(--primary); font-weight: 600; }
-  nav button:hover:not(.active) { background: var(--gray-50); }
 
   main { padding: 20px; max-width: 700px; margin: 0 auto; }
   .section { display: none; }
@@ -88,7 +79,7 @@
   .expiry-label.ok { color: var(--success); }
   .expiry-label.no-expiry { color: var(--gray-400); }
   .item-actions { display: flex; gap: 6px; flex-shrink: 0; }
-  .btn-icon { background: var(--gray-100); border: none; border-radius: 8px; width: 34px; height: 34px; cursor: pointer; font-size: 16px; transition: background .15s; }
+  .btn-icon { background: var(--gray-100); border: none; border-radius: 8px; width: 34px; height: 34px; cursor: pointer; font-size: 16px; }
   .btn-icon:hover { background: var(--gray-200); }
   .btn-icon.delete:hover { background: #fee2e2; }
 
@@ -96,7 +87,7 @@
   .filter-bar input, .filter-bar select { flex: 1; min-width: 130px; padding: 10px 12px; border: 1px solid var(--gray-200); border-radius: 10px; font-size: 14px; background: white; outline: none; }
   .filter-bar input:focus, .filter-bar select:focus { border-color: var(--primary); }
   .sort-bar { display: flex; gap: 8px; margin-bottom: 12px; align-items: center; font-size: 13px; color: var(--gray-600); }
-  .sort-bar select { flex: none; padding: 6px 10px; font-size: 13px; border: 1px solid var(--gray-200); border-radius: 8px; outline: none; }
+  .sort-bar select { padding: 6px 10px; font-size: 13px; border: 1px solid var(--gray-200); border-radius: 8px; outline: none; }
 
   .form-group { margin-bottom: 16px; }
   label { display: block; font-size: 13px; font-weight: 600; color: var(--gray-600); margin-bottom: 6px; }
@@ -378,10 +369,7 @@ const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 const { createClient } = supabase
 const db = createClient(SUPABASE_URL, SUPABASE_KEY)
 
-let currentUser = null
-let currentHousehold = null
-let items = []
-let authMode = 'login'
+let currentUser = null, currentHousehold = null, items = [], authMode = 'login'
 const catIcons = {'食品':'🍎','飲料':'🧃','藥品':'💊','保養品':'🧴','清潔用品':'🧹','3C':'📱','衣物':'👕','其他':'📦'}
 
 db.auth.onAuthStateChange(async (event, session) => {
@@ -390,8 +378,27 @@ db.auth.onAuthStateChange(async (event, session) => {
 })
 
 async function loadProfile() {
-  const { data } = await db.from('profiles').select('*, households(*)').eq('id', currentUser.id).single()
+  // 先嘗試取得 profile
+  let { data, error } = await db.from('profiles').select('*, households(*)').eq('id', currentUser.id).single()
+
+  // 如果 profile 不存在，自動建立
+  if (!data || error) {
+    const { error: insertErr } = await db.from('profiles').insert({
+      id: currentUser.id,
+      email: currentUser.email
+    })
+    if (insertErr) {
+      console.error('建立 profile 失敗:', insertErr)
+      await db.auth.signOut()
+      return
+    }
+    // 重新取得
+    const result = await db.from('profiles').select('*, households(*)').eq('id', currentUser.id).single()
+    data = result.data
+  }
+
   if (!data) { showScreen('auth'); return }
+
   if (data.household_id && data.households) {
     currentHousehold = data.households
     document.getElementById('household-name-badge').textContent = currentHousehold.name
@@ -399,7 +406,9 @@ async function loadProfile() {
     document.getElementById('user-email-display').textContent = currentUser.email
     await loadItems()
     showScreen('app')
-  } else { showScreen('household') }
+  } else {
+    showScreen('household')
+  }
 }
 
 function showScreen(name) {
@@ -428,7 +437,7 @@ async function handleAuth() {
   } else {
     const { error } = await db.auth.signUp({ email, password })
     if (error) { showAuthMsg('註冊失敗：' + translateError(error.message), 'error'); btn.disabled=false; btn.textContent='註冊' }
-    else { showAuthMsg('✅ 註冊成功！請直接登入。', 'success'); switchAuthTab('login') }
+    else { showAuthMsg('✅ 註冊成功！請直接登入。', 'success'); switchAuthTab('login'); btn.disabled=false; btn.textContent='登入' }
   }
 }
 
@@ -436,6 +445,7 @@ function showAuthMsg(msg, type) {
   document.getElementById('auth-message').innerHTML = `<div class="${type==='error'?'auth-error':'auth-success'}">${msg}</div>`
 }
 function translateError(msg) {
+  if (!msg) return '請稍後再試'
   if (msg.includes('Invalid login')) return '信箱或密碼錯誤'
   if (msg.includes('already registered')) return '此信箱已被註冊'
   if (msg.includes('Password should be')) return '密碼至少需要 6 個字元'
@@ -447,7 +457,7 @@ async function createHousehold() {
   const name = document.getElementById('household-name').value.trim()
   if (!name) { showHouseholdMsg('請輸入家庭名稱', 'error'); return }
   const { data: hh, error } = await db.from('households').insert({ name, owner_id: currentUser.id }).select().single()
-  if (error) { showHouseholdMsg('建立失敗，請再試一次', 'error'); return }
+  if (error) { showHouseholdMsg('建立失敗：' + error.message, 'error'); return }
   await db.from('profiles').update({ household_id: hh.id }).eq('id', currentUser.id)
   await loadProfile()
 }
@@ -611,7 +621,7 @@ async function addItem() {
     added_by:currentUser.id
   })
   btn.disabled=false; btn.textContent='新增物品'
-  if(error){alert('新增失敗，請再試一次');return}
+  if(error){alert('新增失敗：'+error.message);return}
   document.getElementById('add-name').value=''
   document.getElementById('add-qty').value='1'
   document.getElementById('add-unit').value=''
@@ -622,7 +632,7 @@ async function addItem() {
 }
 
 async function deleteItem(id) {
-  if(!confirm('確定要刪除這個物品嗎？'))return
+  if(!confirm('確定要刪除？'))return
   await db.from('items').delete().eq('id',id)
   await loadItems(); renderItems(); buildFilterOptions()
 }
@@ -652,7 +662,7 @@ async function saveEdit() {
     expiry_date:document.getElementById('edit-expiry').value||null,
     note:document.getElementById('edit-note').value.trim()
   }).eq('id',id)
-  if(error){alert('儲存失敗，請再試一次');return}
+  if(error){alert('儲存失敗：'+error.message);return}
   closeModal(); await loadItems(); renderItems()
 }
 
@@ -702,10 +712,8 @@ async function addScannedItem() {
     category:document.getElementById('scan-cat').value,
     location:document.getElementById('scan-loc').value,
     quantity:parseInt(document.getElementById('scan-qty').value)||1,
-    unit:'',
-    expiry_date:document.getElementById('scan-expiry').value||null,
-    barcode:document.getElementById('scan-barcode').value,
-    added_by:currentUser.id
+    unit:'', expiry_date:document.getElementById('scan-expiry').value||null,
+    barcode:document.getElementById('scan-barcode').value, added_by:currentUser.id
   })
   document.getElementById('scan-form-card').style.display='none'
   document.getElementById('scan-result').textContent=''
