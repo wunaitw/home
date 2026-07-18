@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>家居物品管理</title>
+<title>別浪費</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   :root {
@@ -53,8 +53,8 @@
   .card-title { font-size: 15px; font-weight: 600; color: var(--gray-600); margin-bottom: 12px; }
 
   .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px; }
-  .stat { background: white; border-radius: var(--radius); box-shadow: var(--shadow); padding: 16px 12px; text-align: center; }
-  .stat:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.12); transition: all .15s; }
+  .stat { background: white; border-radius: var(--radius); box-shadow: var(--shadow); padding: 16px 12px; text-align: center; cursor: pointer; transition: all .15s; }
+  .stat:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.12); }
   .stat.stat-active { box-shadow: 0 0 0 3px var(--primary); }
   .stat-num { font-size: 32px; font-weight: 700; }
   .stat-label { font-size: 12px; color: var(--gray-600); margin-top: 4px; }
@@ -62,12 +62,13 @@
   .stat.warning .stat-num { color: var(--warning); }
   .stat.ok .stat-num { color: var(--primary); }
 
-  .item-card { background: white; border-radius: var(--radius); box-shadow: var(--shadow); padding: 16px; margin-bottom: 10px; display: flex; align-items: flex-start; gap: 14px; border-left: 4px solid var(--gray-200); }
+  .item-card { background: white; border-radius: var(--radius); box-shadow: var(--shadow); padding: 14px; margin-bottom: 10px; display: flex; align-items: flex-start; gap: 12px; border-left: 4px solid var(--gray-200); }
   .item-card.expired { border-left-color: var(--danger); }
   .item-card.expiring-soon { border-left-color: var(--warning); }
   .item-card.ok { border-left-color: var(--success); }
   .item-card.no-expiry { border-left-color: var(--gray-400); }
-  .item-icon { font-size: 28px; flex-shrink: 0; }
+  .item-photo { width: 56px; height: 56px; border-radius: 10px; object-fit: cover; flex-shrink: 0; }
+  .item-photo-placeholder { width: 56px; height: 56px; border-radius: 10px; background: var(--gray-100); display: flex; align-items: center; justify-content: center; font-size: 26px; flex-shrink: 0; }
   .item-info { flex: 1; min-width: 0; }
   .item-name { font-weight: 600; font-size: 15px; margin-bottom: 4px; }
   .item-meta { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px; }
@@ -79,6 +80,8 @@
   .expiry-label.expiring-soon { color: var(--warning); }
   .expiry-label.ok { color: var(--success); }
   .expiry-label.no-expiry { color: var(--gray-400); }
+  .btn-donate { display: inline-flex; align-items: center; gap: 4px; margin-top: 7px; font-size: 12px; font-weight: 600; color: var(--success); background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 99px; padding: 3px 10px; cursor: pointer; border: none; }
+  .btn-donate:hover { background: #dcfce7; }
   .item-actions { display: flex; gap: 6px; flex-shrink: 0; }
   .btn-icon { background: var(--gray-100); border: none; border-radius: 8px; width: 34px; height: 34px; cursor: pointer; font-size: 16px; }
   .btn-icon:hover { background: var(--gray-200); }
@@ -117,14 +120,21 @@
   .photo-preview img { width: 100%; height: 100%; object-fit: cover; }
   .photo-preview-placeholder { text-align: center; color: var(--gray-400); }
   .photo-preview-placeholder .icon { font-size: 48px; margin-bottom: 8px; }
-  .item-photo { width: 56px; height: 56px; border-radius: 10px; object-fit: cover; flex-shrink: 0; }
-  .item-photo-placeholder { width: 56px; height: 56px; border-radius: 10px; background: var(--gray-100); display: flex; align-items: center; justify-content: center; font-size: 28px; flex-shrink: 0; }
 
   .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 200; align-items: center; justify-content: center; padding: 20px; }
   .modal-overlay.open { display: flex; }
   .modal { background: white; border-radius: 16px; padding: 24px; width: 100%; max-width: 450px; max-height: 90vh; overflow-y: auto; }
   .modal h2 { font-size: 18px; font-weight: 700; margin-bottom: 20px; }
   .modal-footer { display: flex; gap: 10px; margin-top: 20px; }
+
+  .donate-modal { max-width: 400px; }
+  .donate-note { background: #fffbeb; border: 1px solid #fde68a; border-radius: 10px; padding: 12px 14px; font-size: 13px; color: #92400e; margin-bottom: 16px; }
+  .donate-org { display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--gray-100); }
+  .donate-org:last-child { border-bottom: none; }
+  .donate-org-name { font-size: 14px; font-weight: 500; }
+  .donate-org-link { font-size: 12px; color: var(--primary); text-decoration: none; font-weight: 600; }
+  .donate-org-link:hover { text-decoration: underline; }
+  .no-donate { text-align: center; padding: 20px; color: var(--gray-400); }
 
   .alert { border-radius: 10px; padding: 12px 16px; margin-bottom: 12px; font-size: 14px; font-weight: 500; display: flex; align-items: center; gap: 10px; }
   .alert.danger { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
@@ -147,7 +157,7 @@
 <div id="auth-screen" class="auth-screen" style="display:none">
   <div class="auth-box">
     <div class="auth-logo">🏠</div>
-    <div class="auth-title">家居物品管理</div>
+    <div class="auth-title">別浪費</div>
     <div class="auth-subtitle">追蹤到期日，告別過期浪費</div>
     <div class="auth-tabs">
       <button class="auth-tab active" onclick="switchAuthTab('login')">登入</button>
@@ -192,27 +202,31 @@
 <div id="app" style="display:none">
   <header>
     <div class="header-left">
-      <h1>🏠 家居管理</h1>
+      <h1>別浪費</h1>
       <span class="household-badge" id="household-name-badge">我家</span>
     </div>
-    <div style="display:flex;gap:8px">
-      <button class="btn-signout" onclick="showSection('settings',this)">⚙️</button>
-      <button class="btn-signout" onclick="signOut()">🚪</button>
-    </div>
+    <button class="btn-signout" onclick="signOut()">🚪</button>
   </header>
   <nav>
     <button class="active" onclick="showSection('dashboard',this)">📊 總覽</button>
     <button onclick="showSection('items',this)">📦 物品</button>
     <button onclick="showSection('add',this)">➕ 新增</button>
-    <button onclick="showSection('scanner',this)">📷 拍照</button>
+    <button onclick="showSection('photo',this)">📷 拍照</button>
     <button onclick="showSection('settings',this)">⚙️ 設定</button>
   </nav>
   <main>
+    <!-- 總覽 -->
     <div id="section-dashboard" class="section active">
       <div class="stats">
-        <div class="stat danger" id="stat-expired" onclick="showStatItems('expired')" style="cursor:pointer" title="點擊查看詳細"><div class="stat-num" id="stat-expired-num">0</div><div class="stat-label">已過期</div></div>
-        <div class="stat warning" id="stat-soon" onclick="showStatItems('soon')" style="cursor:pointer" title="點擊查看詳細"><div class="stat-num" id="stat-soon-num">0</div><div class="stat-label">7天內到期</div></div>
-        <div class="stat ok" id="stat-total" onclick="showStatItems('total')" style="cursor:pointer" title="點擊查看詳細"><div class="stat-num" id="stat-total-num">0</div><div class="stat-label">總物品數</div></div>
+        <div class="stat danger" id="stat-card-expired" onclick="showStatItems('expired')" title="點擊查看詳細">
+          <div class="stat-num" id="stat-expired-num">0</div><div class="stat-label">已過期</div>
+        </div>
+        <div class="stat warning" id="stat-card-soon" onclick="showStatItems('soon')" title="點擊查看詳細">
+          <div class="stat-num" id="stat-soon-num">0</div><div class="stat-label">7天內到期</div>
+        </div>
+        <div class="stat ok" id="stat-card-total" onclick="showStatItems('total')" title="點擊查看詳細">
+          <div class="stat-num" id="stat-total-num">0</div><div class="stat-label">總物品數</div>
+        </div>
       </div>
       <div id="stat-detail" style="display:none"></div>
       <div id="alerts-container"></div>
@@ -220,6 +234,7 @@
       <div class="card"><div class="card-title">📍 各位置物品數</div><div id="location-breakdown"></div></div>
     </div>
 
+    <!-- 物品列表 -->
     <div id="section-items" class="section">
       <div class="filter-bar">
         <input type="text" id="search-input" placeholder="🔍 搜尋物品名稱..." oninput="renderItems()">
@@ -235,6 +250,7 @@
       <div id="items-list"></div>
     </div>
 
+    <!-- 新增物品 -->
     <div id="section-add" class="section">
       <div class="card">
         <div class="card-title">新增物品</div>
@@ -272,7 +288,8 @@
       </div>
     </div>
 
-    <div id="section-scanner" class="section">
+    <!-- 拍照新增 -->
+    <div id="section-photo" class="section">
       <div class="card">
         <div class="card-title">📷 拍照新增物品</div>
         <input type="file" id="photo-input" accept="image/*" capture="environment" style="display:none" onchange="onPhotoSelected(this)">
@@ -282,12 +299,12 @@
             <p style="font-size:14px">點擊拍照或選擇照片</p>
           </div>
         </div>
-        <div style="display:flex;gap:10px">
+        <div style="display:flex;gap:10px;margin-bottom:4px">
           <button class="btn btn-primary" style="flex:1" onclick="document.getElementById('photo-input').click()">📷 拍照 / 選照片</button>
-          <button class="btn btn-secondary" style="flex:1" id="btn-clear-photo" onclick="clearPhoto()" style="display:none">✕ 移除照片</button>
+          <button class="btn btn-secondary" id="btn-clear-photo" onclick="clearPhoto()" style="display:none;flex:1">✕ 移除</button>
         </div>
       </div>
-      <div id="photo-form-card" class="card">
+      <div class="card">
         <div class="card-title">填寫物品資訊</div>
         <div class="form-group"><label>物品名稱 *</label><input type="text" id="scan-name" placeholder="請輸入名稱"></div>
         <div class="form-row">
@@ -322,6 +339,7 @@
       </div>
     </div>
 
+    <!-- 設定 -->
     <div id="section-settings" class="section">
       <div class="card">
         <div class="card-title">🏡 家庭空間</div>
@@ -342,6 +360,7 @@
   </main>
 </div>
 
+<!-- 編輯 Modal -->
 <div class="modal-overlay" id="edit-modal">
   <div class="modal">
     <h2>編輯物品</h2>
@@ -389,60 +408,18 @@
   </div>
 </div>
 
+<!-- 捐贈建議 Modal -->
+<div class="modal-overlay" id="donate-modal">
+  <div class="modal donate-modal">
+    <h2>🤲 捐贈建議</h2>
+    <div id="donate-content"></div>
+    <div class="modal-footer">
+      <button class="btn btn-primary btn-block" onclick="closeDonateModal()">關閉</button>
+    </div>
+  </div>
+</div>
+
 <script>
-const PRESET_LOCS = ['冰箱','廚房','餐桌','客廳','臥室','浴室','儲藏室','陽台']
-const PRESET_CATS = ['食品','飲料','藥品','保養品','清潔用品','3C','衣物','化妝品','小孩食品','寵物食品']
-
-function toggleCustomLoc(prefix) {
-  const sel = document.getElementById(prefix + '-loc')
-  const inp = document.getElementById(prefix + '-loc-custom')
-  if (sel.value === '__custom__') { inp.style.display = 'block'; inp.focus() }
-  else { inp.style.display = 'none'; inp.value = '' }
-}
-
-function getLocValue(prefix) {
-  const sel = document.getElementById(prefix + '-loc')
-  if (sel.value === '__custom__') {
-    const v = document.getElementById(prefix + '-loc-custom').value.trim()
-    return v || '其他'
-  }
-  return sel.value
-}
-
-function toggleCustomCat(prefix) {
-  const sel = document.getElementById(prefix + '-cat')
-  const inp = document.getElementById(prefix + '-cat-custom')
-  if (sel.value === '__custom__') { inp.style.display = 'block'; inp.focus() }
-  else { inp.style.display = 'none'; inp.value = '' }
-}
-function getCatValue(prefix) {
-  const sel = document.getElementById(prefix + '-cat')
-  if (sel.value === '__custom__') {
-    const v = document.getElementById(prefix + '-cat-custom').value.trim()
-    return v || '其他'
-  }
-  return sel.value
-}
-function setCatValue(prefix, cat) {
-  const sel = document.getElementById(prefix + '-cat')
-  const inp = document.getElementById(prefix + '-cat-custom')
-  if (PRESET_CATS.includes(cat)) {
-    sel.value = cat; inp.style.display = 'none'; inp.value = ''
-  } else {
-    sel.value = '__custom__'; inp.style.display = 'block'; inp.value = cat
-  }
-}
-
-function setLocValue(prefix, loc) {
-  const sel = document.getElementById(prefix + '-loc')
-  const inp = document.getElementById(prefix + '-loc-custom')
-  if (PRESET_LOCS.includes(loc)) {
-    sel.value = loc; inp.style.display = 'none'; inp.value = ''
-  } else {
-    sel.value = '__custom__'; inp.style.display = 'block'; inp.value = loc
-  }
-}
-
 const SUPABASE_URL = 'https://fnsughnssooceatrtbad.supabase.co'
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZuc3VnaG5zc29vY2VhdHJ0YmFkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQyNTUzMTYsImV4cCI6MjA5OTgzMTMxNn0.5v4uCfCMsa0cbEMxkvKPmJHJayjE_iyAfvw5pehh6Pg'
 const { createClient } = supabase
@@ -451,33 +428,142 @@ const db = createClient(SUPABASE_URL, SUPABASE_KEY)
 let currentUser = null, currentHousehold = null, items = [], authMode = 'login'
 const catIcons = {'食品':'🍎','飲料':'🧃','藥品':'💊','保養品':'🧴','清潔用品':'🧹','3C':'📱','衣物':'👕','化妝品':'💄','小孩食品':'🧒','寵物食品':'🐾','其他':'📦'}
 
+const PRESET_CATS = ['食品','飲料','藥品','保養品','清潔用品','3C','衣物','化妝品','小孩食品','寵物食品']
+const PRESET_LOCS = ['冰箱','廚房','餐桌','客廳','臥室','浴室','儲藏室','陽台']
+
+// ── 捐贈資料 ──
+const donationMap = {
+  '食品': {
+    note: '⚠️ 請確認未開封、且在有效期限內才能捐贈',
+    orgs: [
+      { name: '台灣食物銀行聯合會', url: 'https://www.foodbank-taiwan.org.tw' },
+      { name: '善牧基金會', url: 'https://www.goodshepherd.org.tw' },
+      { name: '社區公共冰箱（搜尋你所在縣市）', url: 'https://www.facebook.com/groups/publicfridge.taiwan' },
+    ]
+  },
+  '飲料': {
+    note: '⚠️ 請確認未開封、且在有效期限內才能捐贈',
+    orgs: [
+      { name: '台灣食物銀行聯合會', url: 'https://www.foodbank-taiwan.org.tw' },
+      { name: '善牧基金會', url: 'https://www.goodshepherd.org.tw' },
+    ]
+  },
+  '小孩食品': {
+    note: '⚠️ 請確認未開封、且在有效期限內才能捐贈',
+    orgs: [
+      { name: '家扶基金會', url: 'https://www.ccf.org.tw' },
+      { name: '兒福聯盟', url: 'https://www.children.org.tw' },
+      { name: '台灣食物銀行聯合會', url: 'https://www.foodbank-taiwan.org.tw' },
+    ]
+  },
+  '保養品': {
+    note: '⚠️ 請確認未開封才能捐贈',
+    orgs: [
+      { name: '婦女救援基金會', url: 'https://www.twrf.org.tw' },
+      { name: '勵馨基金會', url: 'https://www.goh.org.tw' },
+    ]
+  },
+  '化妝品': {
+    note: '⚠️ 請確認未開封才能捐贈',
+    orgs: [
+      { name: '婦女救援基金會', url: 'https://www.twrf.org.tw' },
+      { name: '勵馨基金會', url: 'https://www.goh.org.tw' },
+    ]
+  },
+  '清潔用品': {
+    note: '⚠️ 請確認未開封才能捐贈',
+    orgs: [
+      { name: '台灣食物銀行聯合會', url: 'https://www.foodbank-taiwan.org.tw' },
+      { name: '家扶基金會', url: 'https://www.ccf.org.tw' },
+    ]
+  },
+  '寵物食品': {
+    note: '⚠️ 請確認未開封才能捐贈',
+    orgs: [
+      { name: '台灣流浪動物救援聯盟（TARA）', url: 'https://www.tara.org.tw' },
+      { name: '各縣市動物之家（搜尋你的縣市）', url: 'https://www.pet.gov.tw' },
+    ]
+  },
+  '藥品': {
+    note: '🚫 藥品不建議捐贈，請依正確方式丟棄',
+    orgs: [],
+    noOrgs: true,
+    disposal: '帶回原藥局、醫院藥局，或放入環保局設置的藥品回收桶'
+  },
+}
+
+function showDonate(category) {
+  const info = donationMap[category]
+  if (!info) {
+    document.getElementById('donate-content').innerHTML = `
+      <div class="no-donate"><p style="font-size:14px">這個分類目前沒有捐贈建議，<br>可以考慮送給有需要的親友。</p></div>`
+  } else if (info.noOrgs) {
+    document.getElementById('donate-content').innerHTML = `
+      <div class="donate-note">${info.note}</div>
+      <p style="font-size:14px;color:var(--gray-600);line-height:1.6">正確丟棄方式：<br><strong>${info.disposal}</strong></p>`
+  } else {
+    document.getElementById('donate-content').innerHTML = `
+      <div class="donate-note">${info.note}</div>
+      ${info.orgs.map(o => `
+        <div class="donate-org">
+          <span class="donate-org-name">${o.name}</span>
+          <a href="${o.url}" target="_blank" class="donate-org-link">前往網站 →</a>
+        </div>`).join('')}`
+  }
+  document.getElementById('donate-modal').classList.add('open')
+}
+function closeDonateModal() { document.getElementById('donate-modal').classList.remove('open') }
+
+// ── 自訂分類／位置 ──
+function toggleCustomCat(prefix) {
+  const sel = document.getElementById(prefix+'-cat')
+  const inp = document.getElementById(prefix+'-cat-custom')
+  if (sel.value==='__custom__') { inp.style.display='block'; inp.focus() }
+  else { inp.style.display='none'; inp.value='' }
+}
+function getCatValue(prefix) {
+  const sel = document.getElementById(prefix+'-cat')
+  if (sel.value==='__custom__') { const v=document.getElementById(prefix+'-cat-custom').value.trim(); return v||'其他' }
+  return sel.value
+}
+function setCatValue(prefix, cat) {
+  const sel = document.getElementById(prefix+'-cat')
+  const inp = document.getElementById(prefix+'-cat-custom')
+  if (PRESET_CATS.includes(cat)) { sel.value=cat; inp.style.display='none'; inp.value='' }
+  else { sel.value='__custom__'; inp.style.display='block'; inp.value=cat }
+}
+function toggleCustomLoc(prefix) {
+  const sel = document.getElementById(prefix+'-loc')
+  const inp = document.getElementById(prefix+'-loc-custom')
+  if (sel.value==='__custom__') { inp.style.display='block'; inp.focus() }
+  else { inp.style.display='none'; inp.value='' }
+}
+function getLocValue(prefix) {
+  const sel = document.getElementById(prefix+'-loc')
+  if (sel.value==='__custom__') { const v=document.getElementById(prefix+'-loc-custom').value.trim(); return v||'其他' }
+  return sel.value
+}
+function setLocValue(prefix, loc) {
+  const sel = document.getElementById(prefix+'-loc')
+  const inp = document.getElementById(prefix+'-loc-custom')
+  if (PRESET_LOCS.includes(loc)) { sel.value=loc; inp.style.display='none'; inp.value='' }
+  else { sel.value='__custom__'; inp.style.display='block'; inp.value=loc }
+}
+
+// ── Auth ──
 db.auth.onAuthStateChange(async (event, session) => {
   if (session?.user) { currentUser = session.user; await loadProfile() }
   else { currentUser = null; currentHousehold = null; showScreen('auth') }
 })
 
 async function loadProfile() {
-  // 先嘗試取得 profile
   let { data, error } = await db.from('profiles').select('*, households(*)').eq('id', currentUser.id).single()
-
-  // 如果 profile 不存在，自動建立
   if (!data || error) {
-    const { error: insertErr } = await db.from('profiles').insert({
-      id: currentUser.id,
-      email: currentUser.email
-    })
-    if (insertErr) {
-      console.error('建立 profile 失敗:', insertErr)
-      await db.auth.signOut()
-      return
-    }
-    // 重新取得
+    await db.from('profiles').insert({ id: currentUser.id, email: currentUser.email })
     const result = await db.from('profiles').select('*, households(*)').eq('id', currentUser.id).single()
     data = result.data
   }
-
   if (!data) { showScreen('auth'); return }
-
   if (data.household_id && data.households) {
     currentHousehold = data.households
     document.getElementById('household-name-badge').textContent = currentHousehold.name
@@ -485,22 +571,20 @@ async function loadProfile() {
     document.getElementById('user-email-display').textContent = currentUser.email
     await loadItems()
     showScreen('app')
-  } else {
-    showScreen('household')
-  }
+  } else { showScreen('household') }
 }
 
 function showScreen(name) {
   document.getElementById('loading-screen').style.display = 'none'
-  document.getElementById('auth-screen').style.display = name === 'auth' ? 'flex' : 'none'
-  document.getElementById('household-screen').style.display = name === 'household' ? 'flex' : 'none'
-  document.getElementById('app').style.display = name === 'app' ? 'block' : 'none'
+  document.getElementById('auth-screen').style.display = name==='auth' ? 'flex' : 'none'
+  document.getElementById('household-screen').style.display = name==='household' ? 'flex' : 'none'
+  document.getElementById('app').style.display = name==='app' ? 'block' : 'none'
 }
 
 function switchAuthTab(mode) {
   authMode = mode
   document.querySelectorAll('.auth-tab').forEach((t,i) => t.classList.toggle('active',(i===0&&mode==='login')||(i===1&&mode==='signup')))
-  document.getElementById('auth-btn').textContent = mode === 'login' ? '登入' : '註冊'
+  document.getElementById('auth-btn').textContent = mode==='login' ? '登入' : '註冊'
   document.getElementById('auth-message').innerHTML = ''
 }
 
@@ -508,21 +592,18 @@ async function handleAuth() {
   const email = document.getElementById('auth-email').value.trim()
   const password = document.getElementById('auth-password').value
   const btn = document.getElementById('auth-btn')
-  if (!email || !password) { showAuthMsg('請填寫信箱和密碼', 'error'); return }
-  btn.disabled = true; btn.textContent = '處理中...'
-  if (authMode === 'login') {
+  if (!email||!password) { showAuthMsg('請填寫信箱和密碼','error'); return }
+  btn.disabled=true; btn.textContent='處理中...'
+  if (authMode==='login') {
     const { error } = await db.auth.signInWithPassword({ email, password })
-    if (error) { showAuthMsg('登入失敗：' + translateError(error.message), 'error'); btn.disabled=false; btn.textContent='登入' }
+    if (error) { showAuthMsg('登入失敗：'+translateError(error.message),'error'); btn.disabled=false; btn.textContent='登入' }
   } else {
     const { error } = await db.auth.signUp({ email, password })
-    if (error) { showAuthMsg('註冊失敗：' + translateError(error.message), 'error'); btn.disabled=false; btn.textContent='註冊' }
-    else { showAuthMsg('✅ 註冊成功！請直接登入。', 'success'); switchAuthTab('login'); btn.disabled=false; btn.textContent='登入' }
+    if (error) { showAuthMsg('註冊失敗：'+translateError(error.message),'error'); btn.disabled=false; btn.textContent='註冊' }
+    else { showAuthMsg('✅ 註冊成功！請直接登入。','success'); switchAuthTab('login'); btn.disabled=false; btn.textContent='登入' }
   }
 }
-
-function showAuthMsg(msg, type) {
-  document.getElementById('auth-message').innerHTML = `<div class="${type==='error'?'auth-error':'auth-success'}">${msg}</div>`
-}
+function showAuthMsg(msg,type) { document.getElementById('auth-message').innerHTML=`<div class="${type==='error'?'auth-error':'auth-success'}">${msg}</div>` }
 function translateError(msg) {
   if (!msg) return '請稍後再試'
   if (msg.includes('Invalid login')) return '信箱或密碼錯誤'
@@ -534,26 +615,23 @@ async function signOut() { await db.auth.signOut() }
 
 async function createHousehold() {
   const name = document.getElementById('household-name').value.trim()
-  if (!name) { showHouseholdMsg('請輸入家庭名稱', 'error'); return }
+  if (!name) { showHouseholdMsg('請輸入家庭名稱','error'); return }
   const { data: hh, error } = await db.from('households').insert({ name, owner_id: currentUser.id }).select().single()
-  if (error) { showHouseholdMsg('建立失敗：' + error.message, 'error'); return }
+  if (error) { showHouseholdMsg('建立失敗：'+error.message,'error'); return }
   await db.from('profiles').update({ household_id: hh.id }).eq('id', currentUser.id)
   await loadProfile()
 }
-
 async function joinHousehold() {
   const code = document.getElementById('invite-input').value.trim().toUpperCase()
-  if (!code || code.length !== 6) { showHouseholdMsg('請輸入 6 位邀請碼', 'error'); return }
-  const { data: hh, error } = await db.from('households').select().eq('invite_code', code).single()
-  if (error || !hh) { showHouseholdMsg('找不到此邀請碼', 'error'); return }
+  if (!code||code.length!==6) { showHouseholdMsg('請輸入 6 位邀請碼','error'); return }
+  const { data: hh, error } = await db.from('households').select().eq('invite_code',code).single()
+  if (error||!hh) { showHouseholdMsg('找不到此邀請碼','error'); return }
   await db.from('profiles').update({ household_id: hh.id }).eq('id', currentUser.id)
   await loadProfile()
 }
+function showHouseholdMsg(msg,type) { document.getElementById('household-message').innerHTML=`<div class="${type==='error'?'auth-error':'auth-success'}" style="margin-bottom:14px">${msg}</div>` }
 
-function showHouseholdMsg(msg, type) {
-  document.getElementById('household-message').innerHTML = `<div class="${type==='error'?'auth-error':'auth-success'}" style="margin-bottom:14px">${msg}</div>`
-}
-
+// ── 物品資料 ──
 async function loadItems() {
   if (!currentHousehold) return
   const { data } = await db.from('items').select('*').eq('household_id', currentHousehold.id)
@@ -562,7 +640,7 @@ async function loadItems() {
 }
 
 function today() { return new Date().toISOString().split('T')[0] }
-function daysUntil(d) { if (!d) return null; return Math.ceil((new Date(d) - new Date(today())) / 86400000) }
+function daysUntil(d) { if (!d) return null; return Math.ceil((new Date(d)-new Date(today()))/86400000) }
 function formatDate(d) {
   if (!d) return '無到期日'
   const dt = new Date(d)
@@ -571,50 +649,51 @@ function formatDate(d) {
 function getStatus(item) {
   if (!item.expiry_date) return 'no-expiry'
   const d = daysUntil(item.expiry_date)
-  if (d < 0) return 'expired'; if (d <= 7) return 'expiring-soon'; return 'ok'
+  if (d<0) return 'expired'; if (d<=7) return 'expiring-soon'; return 'ok'
 }
 function expiryLabel(item) {
   const s = getStatus(item)
-  if (s === 'no-expiry') return { text:'無到期日', cls:'no-expiry' }
+  if (s==='no-expiry') return { text:'無到期日', cls:'no-expiry' }
   const d = daysUntil(item.expiry_date)
-  if (s === 'expired') return { text:`已過期 ${Math.abs(d)} 天`, cls:'expired' }
-  if (s === 'expiring-soon') return { text: d===0?'今天到期！':`還有 ${d} 天到期`, cls:'expiring-soon' }
+  if (s==='expired') return { text:`已過期 ${Math.abs(d)} 天`, cls:'expired' }
+  if (s==='expiring-soon') return { text: d===0?'今天到期！':`還有 ${d} 天到期`, cls:'expiring-soon' }
   return { text:`${formatDate(item.expiry_date)} 到期`, cls:'ok' }
 }
 
 function showSection(id, btn) {
   document.querySelectorAll('.section').forEach(s => s.classList.remove('active'))
   document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'))
-  document.getElementById('section-' + id).classList.add('active')
+  document.getElementById('section-'+id).classList.add('active')
   if (btn) btn.classList.add('active')
-  if (id === 'dashboard') renderDashboard()
-  if (id === 'items') { buildFilterOptions(); renderItems() }
-  if (id === 'settings') renderSettings()
+  if (id==='dashboard') renderDashboard()
+  if (id==='items') { buildFilterOptions(); renderItems() }
+  if (id==='settings') renderSettings()
 }
 
+// ── 統計卡片點選 ──
 let activeStatFilter = null
 function showStatItems(type) {
   const detailEl = document.getElementById('stat-detail')
-  if (activeStatFilter === type) {
-    activeStatFilter = null; detailEl.style.display = 'none'
-    document.querySelectorAll('.stat').forEach(s => s.classList.remove('stat-active'))
+  if (activeStatFilter===type) {
+    activeStatFilter=null; detailEl.style.display='none'
+    document.querySelectorAll('.stat').forEach(s=>s.classList.remove('stat-active'))
     return
   }
-  activeStatFilter = type
-  document.querySelectorAll('.stat').forEach(s => s.classList.remove('stat-active'))
-  document.getElementById('stat-' + type).classList.add('stat-active')
+  activeStatFilter=type
+  document.querySelectorAll('.stat').forEach(s=>s.classList.remove('stat-active'))
+  document.getElementById('stat-card-'+type).classList.add('stat-active')
   let filtered
-  if (type === 'expired') filtered = items.filter(i => getStatus(i) === 'expired')
-  else if (type === 'soon') filtered = items.filter(i => getStatus(i) === 'expiring-soon')
-  else filtered = [...items]
-  filtered.sort((a,b) => {
-    if (!a.expiry_date && !b.expiry_date) return 0
+  if (type==='expired') filtered=items.filter(i=>getStatus(i)==='expired')
+  else if (type==='soon') filtered=items.filter(i=>getStatus(i)==='expiring-soon')
+  else filtered=[...items]
+  filtered.sort((a,b)=>{
+    if (!a.expiry_date&&!b.expiry_date) return 0
     if (!a.expiry_date) return 1; if (!b.expiry_date) return -1
-    return new Date(a.expiry_date) - new Date(b.expiry_date)
+    return new Date(a.expiry_date)-new Date(b.expiry_date)
   })
-  const titles = { expired:'已過期物品', soon:'7天內到期物品', total:'所有物品' }
-  detailEl.style.display = 'block'
-  detailEl.innerHTML = `<div class="card">
+  const titles={expired:'已過期物品',soon:'7天內到期物品',total:'所有物品'}
+  detailEl.style.display='block'
+  detailEl.innerHTML=`<div class="card">
     <div class="card-title" style="display:flex;justify-content:space-between;align-items:center">
       <span>${titles[type]}（${filtered.length} 件）</span>
       <button onclick="showStatItems('${type}')" style="background:none;border:none;cursor:pointer;color:var(--gray-400);font-size:20px;line-height:1">✕</button>
@@ -626,49 +705,56 @@ function showStatItems(type) {
   </div>`
 }
 
+// ── 總覽 ──
 function renderDashboard() {
-  const expired = items.filter(i => getStatus(i)==='expired')
-  const soon = items.filter(i => getStatus(i)==='expiring-soon')
-  document.getElementById('stat-expired-num').textContent = expired.length
-  document.getElementById('stat-soon-num').textContent = soon.length
-  document.getElementById('stat-total-num').textContent = items.length
-  // 重置點選狀態
-  activeStatFilter = null
-  document.getElementById('stat-detail').style.display = 'none'
-  document.querySelectorAll('.stat').forEach(s => s.classList.remove('stat-active'))
-  const alertsEl = document.getElementById('alerts-container')
-  alertsEl.innerHTML = ''
-  if (expired.length) alertsEl.innerHTML += `<div class="alert danger">⛔ 有 ${expired.length} 件物品已過期！</div>`
-  if (soon.length) alertsEl.innerHTML += `<div class="alert warning">⏰ 有 ${soon.length} 件物品將在 7 天內到期。</div>`
-  const urgent = [...expired,...soon].sort((a,b) => {
+  const expired=items.filter(i=>getStatus(i)==='expired')
+  const soon=items.filter(i=>getStatus(i)==='expiring-soon')
+  document.getElementById('stat-expired-num').textContent=expired.length
+  document.getElementById('stat-soon-num').textContent=soon.length
+  document.getElementById('stat-total-num').textContent=items.length
+  activeStatFilter=null
+  document.getElementById('stat-detail').style.display='none'
+  document.querySelectorAll('.stat').forEach(s=>s.classList.remove('stat-active'))
+  const alertsEl=document.getElementById('alerts-container')
+  alertsEl.innerHTML=''
+  if (expired.length) alertsEl.innerHTML+=`<div class="alert danger">⛔ 有 ${expired.length} 件物品已過期！</div>`
+  if (soon.length) alertsEl.innerHTML+=`<div class="alert warning">⏰ 有 ${soon.length} 件物品將在 7 天內到期。</div>`
+  const urgent=[...expired,...soon].sort((a,b)=>{
     if (!a.expiry_date) return 1; if (!b.expiry_date) return -1
     return new Date(a.expiry_date)-new Date(b.expiry_date)
   })
-  document.getElementById('urgent-list').innerHTML = urgent.length===0
+  document.getElementById('urgent-list').innerHTML=urgent.length===0
     ? '<div class="empty"><div class="empty-icon">✅</div><p>目前沒有需要注意的物品</p></div>'
     : urgent.map(miniCard).join('')
-  const locMap = {}
-  items.forEach(i => { locMap[i.location]=(locMap[i.location]||0)+1 })
-  document.getElementById('location-breakdown').innerHTML = Object.keys(locMap).length===0
+  const locMap={}
+  items.forEach(i=>{ locMap[i.location]=(locMap[i.location]||0)+1 })
+  document.getElementById('location-breakdown').innerHTML=Object.keys(locMap).length===0
     ? '<p style="color:var(--gray-400);font-size:14px">尚無資料</p>'
-    : Object.entries(locMap).sort((a,b)=>b[1]-a[1]).map(([loc,cnt]) =>
+    : Object.entries(locMap).sort((a,b)=>b[1]-a[1]).map(([loc,cnt])=>
         `<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--gray-100)">
           <span style="font-size:14px">${loc}</span><span style="font-weight:700;color:var(--primary)">${cnt} 件</span>
         </div>`).join('')
 }
 
 function miniCard(item) {
-  const lbl = expiryLabel(item)
+  const lbl=expiryLabel(item)
+  const status=getStatus(item)
+  const canDonate = (status==='expiring-soon'||status==='expired') && donationMap[item.category]
   return `<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--gray-100)">
-    <span style="font-size:22px">${catIcons[item.category]||'📦'}</span>
-    <div style="flex:1"><div style="font-weight:600;font-size:14px">${item.name}</div><div style="font-size:12px;color:var(--gray-600)">${item.location}</div></div>
-    <div class="expiry-label ${lbl.cls}" style="font-size:12px">${lbl.text}</div>
+    ${item.photo_url ? `<img src="${item.photo_url}" style="width:40px;height:40px;border-radius:8px;object-fit:cover;flex-shrink:0">` : `<span style="font-size:22px;flex-shrink:0">${catIcons[item.category]||'📦'}</span>`}
+    <div style="flex:1;min-width:0">
+      <div style="font-weight:600;font-size:14px">${item.name}</div>
+      <div style="font-size:12px;color:var(--gray-600)">${item.location}</div>
+      <div class="expiry-label ${lbl.cls}" style="font-size:12px">${lbl.text}</div>
+      ${canDonate ? `<button class="btn-donate" onclick="showDonate('${item.category}')">🤲 捐贈建議</button>` : ''}
+    </div>
   </div>`
 }
 
+// ── 物品列表 ──
 function buildFilterOptions() {
-  const cats = [...new Set(items.map(i=>i.category))]
-  const locs = [...new Set(items.map(i=>i.location))]
+  const cats=[...new Set(items.map(i=>i.category))]
+  const locs=[...new Set(items.map(i=>i.location))]
   const catSel=document.getElementById('filter-cat'), locSel=document.getElementById('filter-loc')
   const cv=catSel.value, lv=locSel.value
   catSel.innerHTML='<option value="">全部分類</option>'+cats.map(c=>`<option value="${c}">${catIcons[c]||''} ${c}</option>`).join('')
@@ -682,28 +768,29 @@ function renderItems() {
   const loc=document.getElementById('filter-loc').value
   const sortBy=document.getElementById('sort-by').value
   let filtered=items.filter(i=>{
-    if(q&&!i.name.toLowerCase().includes(q))return false
-    if(cat&&i.category!==cat)return false
-    if(loc&&i.location!==loc)return false
+    if (q&&!i.name.toLowerCase().includes(q)) return false
+    if (cat&&i.category!==cat) return false
+    if (loc&&i.location!==loc) return false
     return true
   })
   filtered.sort((a,b)=>{
-    if(sortBy==='expiry'){
-      if(!a.expiry_date&&!b.expiry_date)return 0
-      if(!a.expiry_date)return 1; if(!b.expiry_date)return -1
+    if (sortBy==='expiry') {
+      if (!a.expiry_date&&!b.expiry_date) return 0
+      if (!a.expiry_date) return 1; if (!b.expiry_date) return -1
       return new Date(a.expiry_date)-new Date(b.expiry_date)
     }
-    if(sortBy==='name')return a.name.localeCompare(b.name,'zh-TW')
-    if(sortBy==='category')return a.category.localeCompare(b.category,'zh-TW')
-    if(sortBy==='location')return a.location.localeCompare(b.location,'zh-TW')
+    if (sortBy==='name') return a.name.localeCompare(b.name,'zh-TW')
+    if (sortBy==='category') return a.category.localeCompare(b.category,'zh-TW')
+    if (sortBy==='location') return a.location.localeCompare(b.location,'zh-TW')
   })
   const el=document.getElementById('items-list')
-  if(filtered.length===0){el.innerHTML='<div class="empty"><div class="empty-icon">📭</div><p>找不到符合的物品</p></div>';return}
+  if (filtered.length===0) { el.innerHTML='<div class="empty"><div class="empty-icon">📭</div><p>找不到符合的物品</p></div>'; return }
   el.innerHTML=filtered.map(item=>{
     const status=getStatus(item), lbl=expiryLabel(item)
-    const thumb = item.photo_url
+    const thumb=item.photo_url
       ? `<img src="${item.photo_url}" class="item-photo" loading="lazy">`
       : `<div class="item-photo-placeholder">${catIcons[item.category]||'📦'}</div>`
+    const canDonate=(status==='expiring-soon'||status==='expired') && donationMap[item.category]
     return `<div class="item-card ${status}">
       ${thumb}
       <div class="item-info">
@@ -712,10 +799,10 @@ function renderItems() {
           <span class="tag">${item.category}</span>
           <span class="tag location">📍 ${item.location}</span>
           <span class="tag qty">× ${item.quantity}${item.unit||''}</span>
-          ${item.barcode?`<span class="tag">🔢 ${item.barcode}</span>`:''}
         </div>
         <div class="expiry-label ${lbl.cls}">${lbl.text}</div>
-        ${item.note?`<div style="font-size:12px;color:var(--gray-400);margin-top:4px">${item.note}</div>`:''}
+        ${item.note ? `<div style="font-size:12px;color:var(--gray-400);margin-top:4px">${item.note}</div>` : ''}
+        ${canDonate ? `<button class="btn-donate" onclick="showDonate('${item.category}')">🤲 捐贈建議</button>` : ''}
       </div>
       <div class="item-actions">
         <button class="btn-icon" onclick="openEdit('${item.id}')">✏️</button>
@@ -725,15 +812,15 @@ function renderItems() {
   }).join('')
 }
 
+// ── 新增物品 ──
 async function addItem() {
   const name=document.getElementById('add-name').value.trim()
-  if(!name){alert('請輸入物品名稱！');return}
+  if (!name) { alert('請輸入物品名稱！'); return }
   const btn=document.getElementById('add-btn')
   btn.disabled=true; btn.textContent='新增中...'
-  const {error}=await db.from('items').insert({
+  const { error }=await db.from('items').insert({
     household_id:currentHousehold.id, name,
-    category:getCatValue('add'),
-    location:getLocValue('add'),
+    category:getCatValue('add'), location:getLocValue('add'),
     quantity:parseInt(document.getElementById('add-qty').value)||1,
     unit:document.getElementById('add-unit').value.trim(),
     expiry_date:document.getElementById('add-expiry').value||null,
@@ -741,144 +828,135 @@ async function addItem() {
     added_by:currentUser.id
   })
   btn.disabled=false; btn.textContent='新增物品'
-  if(error){alert('新增失敗：'+error.message);return}
+  if (error) { alert('新增失敗：'+error.message); return }
   document.getElementById('add-name').value=''
   document.getElementById('add-qty').value='1'
   document.getElementById('add-unit').value=''
   document.getElementById('add-expiry').value=''
   document.getElementById('add-note').value=''
-  await loadItems()
-  alert('✅ 物品已新增！')
+  await loadItems(); alert('✅ 物品已新增！')
 }
 
 async function deleteItem(id) {
-  if(!confirm('確定要刪除？'))return
+  if (!confirm('確定要刪除？')) return
   await db.from('items').delete().eq('id',id)
   await loadItems(); renderItems(); buildFilterOptions()
 }
 
+// ── 編輯 ──
 function openEdit(id) {
-  const item=items.find(i=>i.id===id); if(!item)return
+  const item=items.find(i=>i.id===id); if (!item) return
   document.getElementById('edit-id').value=id
   document.getElementById('edit-name').value=item.name
   setCatValue('edit', item.category)
   setLocValue('edit', item.location)
-  editSelectedPhotoFile = null
-  const prevEl = document.getElementById('edit-photo-preview')
-  prevEl.innerHTML = item.photo_url
-    ? `<img src="${item.photo_url}" style="width:80px;height:80px;object-fit:cover;border-radius:10px">`
-    : '<span style="font-size:12px;color:var(--gray-400)">尚無照片</span>'
   document.getElementById('edit-qty').value=item.quantity
   document.getElementById('edit-unit').value=item.unit||''
   document.getElementById('edit-expiry').value=item.expiry_date||''
   document.getElementById('edit-note').value=item.note||''
+  editSelectedPhotoFile=null
+  const prevEl=document.getElementById('edit-photo-preview')
+  prevEl.innerHTML=item.photo_url
+    ? `<img src="${item.photo_url}" style="width:80px;height:80px;object-fit:cover;border-radius:10px">`
+    : '<span style="font-size:12px;color:var(--gray-400)">尚無照片</span>'
   document.getElementById('edit-modal').classList.add('open')
 }
-function closeModal(){document.getElementById('edit-modal').classList.remove('open')}
+function closeModal() { document.getElementById('edit-modal').classList.remove('open') }
 
 async function saveEdit() {
-  const id = document.getElementById('edit-id').value
-  let photo_url = items.find(i => i.id === id)?.photo_url || null
+  const id=document.getElementById('edit-id').value
+  let photo_url=items.find(i=>i.id===id)?.photo_url||null
   if (editSelectedPhotoFile) {
-    const uploaded = await uploadPhoto(editSelectedPhotoFile)
-    if (uploaded) photo_url = uploaded
+    const uploaded=await uploadPhoto(editSelectedPhotoFile)
+    if (uploaded) photo_url=uploaded
   }
-  const { error } = await db.from('items').update({
-    name: document.getElementById('edit-name').value.trim(),
-    category: getCatValue('edit'),
-    location: getLocValue('edit'),
-    quantity: parseInt(document.getElementById('edit-qty').value) || 1,
-    unit: document.getElementById('edit-unit').value.trim(),
-    expiry_date: document.getElementById('edit-expiry').value || null,
-    note: document.getElementById('edit-note').value.trim(),
+  const { error }=await db.from('items').update({
+    name:document.getElementById('edit-name').value.trim(),
+    category:getCatValue('edit'), location:getLocValue('edit'),
+    quantity:parseInt(document.getElementById('edit-qty').value)||1,
+    unit:document.getElementById('edit-unit').value.trim(),
+    expiry_date:document.getElementById('edit-expiry').value||null,
+    note:document.getElementById('edit-note').value.trim(),
     photo_url
-  }).eq('id', id)
-  if (error) { alert('儲存失敗：' + error.message); return }
-  editSelectedPhotoFile = null
+  }).eq('id',id)
+  if (error) { alert('儲存失敗：'+error.message); return }
+  editSelectedPhotoFile=null
   closeModal(); await loadItems(); renderItems()
 }
 
-let selectedPhotoFile = null
-let editSelectedPhotoFile = null
+// ── 照片 ──
+let selectedPhotoFile=null, editSelectedPhotoFile=null
 
 function onPhotoSelected(input) {
-  const file = input.files[0]
-  if (!file) return
-  selectedPhotoFile = file
-  const url = URL.createObjectURL(file)
-  document.getElementById('photo-preview').innerHTML = `<img src="${url}" style="width:100%;height:100%;object-fit:cover;border-radius:var(--radius)">`
-  document.getElementById('btn-clear-photo').style.display = 'block'
+  const file=input.files[0]; if (!file) return
+  selectedPhotoFile=file
+  const url=URL.createObjectURL(file)
+  document.getElementById('photo-preview').innerHTML=`<img src="${url}" style="width:100%;height:100%;object-fit:cover">`
+  document.getElementById('btn-clear-photo').style.display='block'
 }
-
 function clearPhoto() {
-  selectedPhotoFile = null
-  document.getElementById('photo-input').value = ''
-  document.getElementById('photo-preview').innerHTML = `<div class="photo-preview-placeholder"><div class="icon">📷</div><p style="font-size:14px">點擊拍照或選擇照片</p></div>`
-  document.getElementById('btn-clear-photo').style.display = 'none'
+  selectedPhotoFile=null
+  document.getElementById('photo-input').value=''
+  document.getElementById('photo-preview').innerHTML=`<div class="photo-preview-placeholder"><div class="icon">📷</div><p style="font-size:14px">點擊拍照或選擇照片</p></div>`
+  document.getElementById('btn-clear-photo').style.display='none'
 }
-
 function onEditPhotoSelected(input) {
-  const file = input.files[0]
-  if (!file) return
-  editSelectedPhotoFile = file
-  const url = URL.createObjectURL(file)
-  document.getElementById('edit-photo-preview').innerHTML = `<img src="${url}" style="width:80px;height:80px;object-fit:cover;border-radius:10px">`
+  const file=input.files[0]; if (!file) return
+  editSelectedPhotoFile=file
+  const url=URL.createObjectURL(file)
+  document.getElementById('edit-photo-preview').innerHTML=`<img src="${url}" style="width:80px;height:80px;object-fit:cover;border-radius:10px">`
 }
-
 async function uploadPhoto(file) {
-  const ext = file.name.split('.').pop() || 'jpg'
-  const path = `${currentUser.id}/${Date.now()}.${ext}`
-  const { error } = await db.storage.from('item-photos').upload(path, file, { upsert: true })
+  const ext=file.name.split('.').pop()||'jpg'
+  const path=`${currentUser.id}/${Date.now()}.${ext}`
+  const { error }=await db.storage.from('item-photos').upload(path, file, { upsert:true })
   if (error) { console.error('上傳失敗:', error); return null }
-  const { data } = db.storage.from('item-photos').getPublicUrl(path)
+  const { data }=db.storage.from('item-photos').getPublicUrl(path)
   return data.publicUrl
 }
-
 async function addPhotoItem() {
-  const name = document.getElementById('scan-name').value.trim()
+  const name=document.getElementById('scan-name').value.trim()
   if (!name) { alert('請輸入物品名稱！'); return }
-  const btn = document.getElementById('photo-add-btn')
-  btn.disabled = true; btn.textContent = '新增中...'
-  let photo_url = null
-  if (selectedPhotoFile) { photo_url = await uploadPhoto(selectedPhotoFile) }
-  const { error } = await db.from('items').insert({
-    household_id: currentHousehold.id, name,
-    category: getCatValue('scan'),
-    location: getLocValue('scan'),
-    quantity: parseInt(document.getElementById('scan-qty').value) || 1,
-    unit: '',
-    expiry_date: document.getElementById('scan-expiry').value || null,
-    note: document.getElementById('scan-note').value.trim(),
-    photo_url, added_by: currentUser.id
+  const btn=document.getElementById('photo-add-btn')
+  btn.disabled=true; btn.textContent='新增中...'
+  let photo_url=null
+  if (selectedPhotoFile) { photo_url=await uploadPhoto(selectedPhotoFile) }
+  const { error }=await db.from('items').insert({
+    household_id:currentHousehold.id, name,
+    category:getCatValue('scan'), location:getLocValue('scan'),
+    quantity:parseInt(document.getElementById('scan-qty').value)||1,
+    unit:'', expiry_date:document.getElementById('scan-expiry').value||null,
+    note:document.getElementById('scan-note').value.trim(),
+    photo_url, added_by:currentUser.id
   })
-  btn.disabled = false; btn.textContent = '新增物品'
-  if (error) { alert('新增失敗：' + error.message); return }
-  document.getElementById('scan-name').value = ''
-  document.getElementById('scan-qty').value = '1'
-  document.getElementById('scan-expiry').value = ''
-  document.getElementById('scan-note').value = ''
+  btn.disabled=false; btn.textContent='新增物品'
+  if (error) { alert('新增失敗：'+error.message); return }
+  document.getElementById('scan-name').value=''
+  document.getElementById('scan-qty').value='1'
+  document.getElementById('scan-expiry').value=''
+  document.getElementById('scan-note').value=''
   clearPhoto()
-  await loadItems()
-  alert('✅ 物品已新增！')
+  await loadItems(); alert('✅ 物品已新增！')
 }
 
+// ── 設定 ──
 async function renderSettings() {
-  if(!currentHousehold)return
+  if (!currentHousehold) return
   document.getElementById('display-invite-code').textContent=currentHousehold.invite_code
-  const {data:members}=await db.from('profiles').select('email').eq('household_id',currentHousehold.id)
+  const { data:members }=await db.from('profiles').select('email').eq('household_id',currentHousehold.id)
   document.getElementById('members-list').innerHTML=(members||[]).map(m=>
     `<div class="member-row">
       <div class="member-avatar">${m.email?m.email[0].toUpperCase():'?'}</div>
       <div><div style="font-size:14px;font-weight:500">${m.email}</div></div>
     </div>`).join('')
 }
-
 function copyInviteCode() {
-  const code=currentHousehold?.invite_code; if(!code)return
+  const code=currentHousehold?.invite_code; if (!code) return
   navigator.clipboard.writeText(code).then(()=>alert('✅ 邀請碼已複製：'+code)).catch(()=>alert('邀請碼：'+code))
 }
 
 document.getElementById('edit-modal').addEventListener('click',function(e){if(e.target===this)closeModal()})
+document.getElementById('donate-modal').addEventListener('click',function(e){if(e.target===this)closeDonateModal()})
 </script>
 </body>
 </html>
