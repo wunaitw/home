@@ -438,7 +438,7 @@ const donationMap = {
     orgs: [
       { name: '台灣食物銀行聯合會', url: 'https://www.foodbank-taiwan.org.tw' },
       { name: '善牧基金會', url: 'https://www.goodshepherd.org.tw' },
-      { name: '社區公共冰箱（搜尋你所在縣市）', url: 'https://www.facebook.com/groups/publicfridge.taiwan' },
+      { name: '社區公共冰箱（Google 搜尋「公共冰箱＋你的縣市」）', url: 'https://www.google.com/search?q=公共冰箱+台灣' },
     ]
   },
   '飲料': {
@@ -748,7 +748,14 @@ function miniCard(item) {
       <div class="expiry-label ${lbl.cls}" style="font-size:12px">${lbl.text}</div>
       ${canDonate ? `<button class="btn-donate" onclick="showDonate('${item.category}')">🤲 捐贈建議</button>` : ''}
     </div>
+    <button class="btn-icon delete" onclick="deleteDashboardItem('${item.id}')" style="flex-shrink:0">🗑️</button>
   </div>`
+}
+
+async function deleteDashboardItem(id) {
+  if (!confirm('確定要刪除？')) return
+  await db.from('items').delete().eq('id', id)
+  await loadItems()
 }
 
 // ── 物品列表 ──
