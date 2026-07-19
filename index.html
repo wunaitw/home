@@ -966,16 +966,13 @@ async function analyzePhotoText(file) {
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
       body: JSON.stringify({ base64 })
     })
-    const text = await res.text()
-    console.log('analyze-photo response:', res.status, text)
-    if (!res.ok) return { name: '', fullText: `HTTP ${res.status}: ${text.slice(0,100)}` }
-    const data = JSON.parse(text)
-    if (data.error) return { name: '', fullText: `API Error: ${JSON.stringify(data.error).slice(0,100)}` }
+    const data = await res.json()
+    if (data.error) { console.error('analyze-photo error:', data.error); return { name: '', fullText: '' } }
     const name = data.name || ''
-    return { name, fullText: name || 'EMPTY_NAME' }
+    return { name, fullText: name }
   } catch(e) {
     console.error('analyze-photo error:', e)
-    return { name: '', fullText: `ERROR: ${e.message}` }
+    return { name: '', fullText: '' }
   }
 }
 
