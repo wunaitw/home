@@ -434,7 +434,7 @@
 </div>
 
 <script>
-const VISION_KEY = 'AIzaSyB9Wwd2F4RFodGxf9POelh-Hfz0n6MjIkE'
+const ANALYZE_URL = 'https://fnsughnssooceatrtbad.supabase.co/functions/v1/analyze-photo'
 const SUPABASE_URL = 'https://fnsughnssooceatrtbad.supabase.co'
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZuc3VnaG5zc29vY2VhdHJ0YmFkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQyNTUzMTYsImV4cCI6MjA5OTgzMTMxNn0.5v4uCfCMsa0cbEMxkvKPmJHJayjE_iyAfvw5pehh6Pg'
 const { createClient } = supabase
@@ -959,18 +959,19 @@ async function resizeImageToBase64(file, maxWidth=1200) {
 async function analyzePhotoText(file) {
   try {
     const base64 = await resizeImageToBase64(file)
-    const res = await fetch(`https://vision.googleapis.com/v1/images:annotate?key=${VISION_KEY}`, {
+    const session = await _supabase.auth.getSession()
+    const token = session.data.session?.access_token
+    const res = await fetch(ANALYZE_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ requests: [{ image: { content: base64 }, features: [{ type: 'DOCUMENT_TEXT_DETECTION', maxResults: 1 }] }] })
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify({ base64 })
     })
     const data = await res.json()
-    if (data.error) { console.error('Vision API:', data.error.message); return { name: '', fullText: '' } }
-    const fullText = data.responses?.[0]?.textAnnotations?.[0]?.description || ''
-    const name = fullText.split('\n')[0].trim()
-    return { name, fullText }
+    if (data.error) { console.error('analyze-photo error:', data.error); return { name: '', fullText: '' } }
+    const name = data.name || ''
+    return { name, fullText: name }
   } catch(e) {
-    console.error('Vision API error:', e)
+    console.error('analyze-photo error:', e)
     return { name: '', fullText: '' }
   }
 }
