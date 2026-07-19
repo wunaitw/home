@@ -972,7 +972,7 @@ async function analyzePhotoText(file) {
     return { name, fullText: name }
   } catch(e) {
     console.error('analyze-photo error:', e)
-    return { name: '', fullText: '' }
+    return { name: '', fullText: `ERROR: ${e.message}` }
   }
 }
 
