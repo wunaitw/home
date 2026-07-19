@@ -959,7 +959,7 @@ async function resizeImageToBase64(file, maxWidth=1200) {
 async function analyzePhotoText(file) {
   try {
     const base64 = await resizeImageToBase64(file)
-    const session = await _supabase.auth.getSession()
+    const session = await db.auth.getSession()
     const token = session.data.session?.access_token
     const res = await fetch(ANALYZE_URL, {
       method: 'POST',
