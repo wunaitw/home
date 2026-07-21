@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>別浪費</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
@@ -34,7 +34,8 @@
   .spinner { width: 40px; height: 40px; border: 3px solid var(--gray-200); border-top-color: var(--primary); border-radius: 50%; animation: spin .8s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
 
-  header { background: white; border-bottom: 1px solid var(--gray-200); padding: 14px 20px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; box-shadow: var(--shadow); }
+  header { background: white; border-bottom: 1px solid var(--gray-200); padding: 14px 20px; padding-top: calc(14px + env(safe-area-inset-top)); display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; box-shadow: var(--shadow); }
+  body { padding-bottom: env(safe-area-inset-bottom); }
   .header-left { display: flex; align-items: center; gap: 10px; }
   header h1 { font-size: 18px; font-weight: 700; color: var(--primary); }
   .household-badge { font-size: 12px; background: #eff6ff; color: var(--primary); padding: 3px 10px; border-radius: 99px; font-weight: 600; }
@@ -57,10 +58,16 @@
   .stat:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.12); }
   .stat.stat-active { box-shadow: 0 0 0 3px var(--primary); }
   .stat-num { font-size: 32px; font-weight: 700; }
-  .stat-label { font-size: 12px; color: var(--gray-600); margin-top: 4px; }
-  .stat.danger .stat-num { color: var(--danger); }
-  .stat.warning .stat-num { color: var(--warning); }
-  .stat.ok .stat-num { color: var(--primary); }
+  .stat-label { font-size: 12px; margin-top: 4px; font-weight: 500; }
+  .stat.danger { background: #FFD6CC; }
+  .stat.danger .stat-num { color: #c0392b; }
+  .stat.danger .stat-label { color: #c0392b; }
+  .stat.warning { background: #FFF0C2; }
+  .stat.warning .stat-num { color: #b07d00; }
+  .stat.warning .stat-label { color: #b07d00; }
+  .stat.ok { background: #FFD6E8; }
+  .stat.ok .stat-num { color: #a0316a; }
+  .stat.ok .stat-label { color: #a0316a; }
 
   .item-card { background: white; border-radius: var(--radius); box-shadow: var(--shadow); padding: 14px; margin-bottom: 10px; display: flex; align-items: flex-start; gap: 12px; border-left: 4px solid var(--gray-200); }
   .item-card.expired { border-left-color: var(--danger); }
@@ -82,6 +89,8 @@
   .expiry-label.no-expiry { color: var(--gray-400); }
   .btn-donate { display: inline-flex; align-items: center; gap: 4px; margin-top: 7px; font-size: 12px; font-weight: 600; color: var(--success); background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 99px; padding: 3px 10px; cursor: pointer; border: none; }
   .btn-donate:hover { background: #dcfce7; }
+  .btn-scroll-top { position: fixed; bottom: calc(80px + env(safe-area-inset-bottom)); right: 20px; width: 44px; height: 44px; border-radius: 50%; background: var(--primary); color: white; border: none; font-size: 20px; cursor: pointer; box-shadow: 0 4px 12px rgba(79,124,255,0.4); display: none; align-items: center; justify-content: center; z-index: 200; transition: opacity .2s; }
+  .btn-scroll-top.visible { display: flex; }
   .item-actions { display: flex; gap: 6px; flex-shrink: 0; }
   .btn-icon { background: var(--gray-100); border: none; border-radius: 8px; width: 34px; height: 34px; cursor: pointer; font-size: 16px; }
   .btn-icon:hover { background: var(--gray-200); }
@@ -1066,6 +1075,14 @@ function copyInviteCode() {
 
 document.getElementById('edit-modal').addEventListener('click',function(e){if(e.target===this)closeModal()})
 document.getElementById('donate-modal').addEventListener('click',function(e){if(e.target===this)closeDonateModal()})
+
+// 回頂部按鈕
+const scrollBtn = document.getElementById('scroll-top-btn')
+window.addEventListener('scroll', () => {
+  scrollBtn.classList.toggle('visible', window.scrollY > 300)
+})
+scrollBtn.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }))
 </script>
+<button id="scroll-top-btn" class="btn-scroll-top">↑</button>
 </body>
 </html>
