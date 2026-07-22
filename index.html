@@ -91,6 +91,29 @@
   .btn-donate:hover { background: #dcfce7; }
   .btn-scroll-top { position: fixed; bottom: calc(80px + env(safe-area-inset-bottom)); right: 20px; width: 44px; height: 44px; border-radius: 50%; background: var(--primary); color: white; border: none; font-size: 20px; cursor: pointer; box-shadow: 0 4px 12px rgba(79,124,255,0.4); display: none; align-items: center; justify-content: center; z-index: 200; transition: opacity .2s; }
   .btn-scroll-top.visible { display: flex; }
+
+  /* 總覽子頁籤 */
+  .sub-tabs { display: flex; background: var(--gray-100); border-radius: 10px; padding: 4px; margin-bottom: 16px; gap: 4px; }
+  .sub-tab { flex: 1; padding: 8px; text-align: center; border: none; background: none; cursor: pointer; border-radius: 8px; font-size: 14px; font-weight: 600; color: var(--gray-600); transition: all .2s; }
+  .sub-tab.active { background: white; color: var(--primary); box-shadow: 0 1px 4px rgba(0,0,0,0.1); }
+  .sub-panel { display: none; }
+  .sub-panel.active { display: block; }
+
+  /* 補貨提醒 */
+  .restock-toggle { display: flex; align-items: center; gap: 10px; padding: 12px 0; }
+  .restock-toggle label { font-size: 14px; font-weight: 600; color: var(--gray-800); cursor: pointer; flex: 1; }
+  .toggle-switch { position: relative; width: 44px; height: 24px; flex-shrink: 0; }
+  .toggle-switch input { opacity: 0; width: 0; height: 0; }
+  .toggle-slider { position: absolute; inset: 0; background: var(--gray-200); border-radius: 24px; cursor: pointer; transition: .2s; }
+  .toggle-slider:before { content: ''; position: absolute; width: 18px; height: 18px; left: 3px; top: 3px; background: white; border-radius: 50%; transition: .2s; }
+  .toggle-switch input:checked + .toggle-slider { background: var(--primary); }
+  .toggle-switch input:checked + .toggle-slider:before { transform: translateX(20px); }
+  .restock-options { background: #f0f5ff; border-radius: 10px; padding: 14px; margin-bottom: 8px; display: none; }
+  .restock-options.open { display: block; }
+  .restock-row { display: flex; gap: 8px; margin-bottom: 10px; align-items: center; }
+  .restock-row label { font-size: 12px; color: var(--gray-600); font-weight: 600; width: 60px; flex-shrink: 0; }
+  .restock-row select, .restock-row input { flex: 1; padding: 8px 10px; border: 1px solid var(--gray-200); border-radius: 8px; font-size: 14px; background: white; }
+  .tag-restock { background: #e0eaff; color: var(--primary); font-size: 11px; padding: 2px 8px; border-radius: 99px; }
   .item-actions { display: flex; gap: 6px; flex-shrink: 0; }
   .btn-icon { background: var(--gray-100); border: none; border-radius: 8px; width: 34px; height: 34px; cursor: pointer; font-size: 16px; }
   .btn-icon:hover { background: var(--gray-200); }
@@ -225,21 +248,33 @@
   <main>
     <!-- 總覽 -->
     <div id="section-dashboard" class="section active">
-      <div class="stats">
-        <div class="stat danger" id="stat-card-expired" onclick="showStatItems('expired')" title="點擊查看詳細">
-          <div class="stat-num" id="stat-expired-num">0</div><div class="stat-label">已過期</div>
-        </div>
-        <div class="stat warning" id="stat-card-soon" onclick="showStatItems('soon')" title="點擊查看詳細">
-          <div class="stat-num" id="stat-soon-num">0</div><div class="stat-label">7天內到期</div>
-        </div>
-        <div class="stat ok" id="stat-card-total" onclick="showStatItems('total')" title="點擊查看詳細">
-          <div class="stat-num" id="stat-total-num">0</div><div class="stat-label">總物品數</div>
-        </div>
+      <div class="sub-tabs">
+        <button class="sub-tab active" onclick="switchDashTab('expiry',this)">⏰ 到期管理</button>
+        <button class="sub-tab" onclick="switchDashTab('stock',this)">📦 庫存管理</button>
       </div>
-      <div id="stat-detail" style="display:none"></div>
-      <div id="alerts-container"></div>
-      <div class="card"><div class="card-title">⚠️ 需要注意的物品</div><div id="urgent-list"></div></div>
-      <div class="card"><div class="card-title">📍 各位置物品數</div><div id="location-breakdown"></div></div>
+      <!-- 到期管理 -->
+      <div id="dash-expiry" class="sub-panel active">
+        <div class="stats">
+          <div class="stat danger" id="stat-card-expired" onclick="showStatItems('expired')" title="點擊查看詳細">
+            <div class="stat-num" id="stat-expired-num">0</div><div class="stat-label">已過期</div>
+          </div>
+          <div class="stat warning" id="stat-card-soon" onclick="showStatItems('soon')" title="點擊查看詳細">
+            <div class="stat-num" id="stat-soon-num">0</div><div class="stat-label">7天內到期</div>
+          </div>
+          <div class="stat ok" id="stat-card-total" onclick="showStatItems('total')" title="點擊查看詳細">
+            <div class="stat-num" id="stat-total-num">0</div><div class="stat-label">有期限物品</div>
+          </div>
+        </div>
+        <div id="stat-detail" style="display:none"></div>
+        <div id="alerts-container"></div>
+        <div class="card"><div class="card-title">⚠️ 需要注意的物品</div><div id="urgent-list"></div></div>
+        <div class="card"><div class="card-title">📍 各位置物品數</div><div id="location-breakdown"></div></div>
+      </div>
+      <!-- 庫存管理 -->
+      <div id="dash-stock" class="sub-panel">
+        <div class="card"><div class="card-title">📦 無到期日物品</div><div id="stock-list"></div></div>
+        <div class="card"><div class="card-title">🔔 補貨提醒清單</div><div id="restock-list"></div></div>
+      </div>
     </div>
 
     <!-- 物品列表 -->
@@ -303,6 +338,39 @@
         </div>
         <div class="form-group"><label>到期日（選填）</label><input type="date" id="add-expiry"></div>
         <div class="form-group"><label>備註（選填）</label><input type="text" id="add-note" placeholder="補充說明..."></div>
+        <div class="form-group">
+          <div class="restock-toggle">
+            <label for="add-restock-toggle">🔔 補貨提醒</label>
+            <label class="toggle-switch">
+              <input type="checkbox" id="add-restock-toggle" onchange="toggleRestockOptions('add')">
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+          <div class="restock-options" id="add-restock-options">
+            <div class="restock-row">
+              <label>週期</label>
+              <select id="add-restock-freq" onchange="updateRestockDay('add')">
+                <option value="monthly">每月</option>
+                <option value="weekly">每週</option>
+              </select>
+            </div>
+            <div class="restock-row">
+              <label id="add-restock-day-label">每月幾號</label>
+              <select id="add-restock-day"></select>
+            </div>
+            <div class="restock-row">
+              <label>重複</label>
+              <select id="add-restock-repeat" onchange="toggleRepeatCount('add')">
+                <option value="infinite">無限期循環</option>
+                <option value="count">循環幾次</option>
+              </select>
+            </div>
+            <div class="restock-row" id="add-restock-count-row" style="display:none">
+              <label>次數</label>
+              <input type="number" id="add-restock-count" value="2" min="1" max="99">
+            </div>
+          </div>
+        </div>
         <button class="btn btn-primary btn-block" id="add-btn" onclick="addItem()">新增物品</button>
       </div>
     </div>
@@ -418,6 +486,39 @@
     </div>
     <div class="form-group"><label>到期日</label><input type="date" id="edit-expiry"></div>
     <div class="form-group"><label>備註</label><input type="text" id="edit-note"></div>
+    <div class="form-group">
+      <div class="restock-toggle">
+        <label for="edit-restock-toggle">🔔 補貨提醒</label>
+        <label class="toggle-switch">
+          <input type="checkbox" id="edit-restock-toggle" onchange="toggleRestockOptions('edit')">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+      <div class="restock-options" id="edit-restock-options">
+        <div class="restock-row">
+          <label>週期</label>
+          <select id="edit-restock-freq" onchange="updateRestockDay('edit')">
+            <option value="monthly">每月</option>
+            <option value="weekly">每週</option>
+          </select>
+        </div>
+        <div class="restock-row">
+          <label id="edit-restock-day-label">每月幾號</label>
+          <select id="edit-restock-day"></select>
+        </div>
+        <div class="restock-row">
+          <label>重複</label>
+          <select id="edit-restock-repeat" onchange="toggleRepeatCount('edit')">
+            <option value="infinite">無限期循環</option>
+            <option value="count">循環幾次</option>
+          </select>
+        </div>
+        <div class="restock-row" id="edit-restock-count-row" style="display:none">
+          <label>次數</label>
+          <input type="number" id="edit-restock-count" value="2" min="1" max="99">
+        </div>
+      </div>
+    </div>
     <div class="form-group">
       <label>照片</label>
       <input type="file" id="edit-photo-input" accept="image/*" capture="environment" style="display:none" onchange="onEditPhotoSelected(this)">
@@ -684,6 +785,87 @@ function expiryLabel(item) {
   return { text:`${formatDate(item.expiry_date)} 到期`, cls:'ok' }
 }
 
+// ── 總覽子頁籤 ──
+function switchDashTab(tab, btn) {
+  document.querySelectorAll('.sub-tab').forEach(b => b.classList.remove('active'))
+  document.querySelectorAll('.sub-panel').forEach(p => p.classList.remove('active'))
+  btn.classList.add('active')
+  document.getElementById('dash-'+tab).classList.add('active')
+  if (tab==='stock') renderStockPanel()
+}
+
+function renderStockPanel() {
+  const noExpiry = items.filter(i => !i.expiry_date)
+  const stockEl = document.getElementById('stock-list')
+  stockEl.innerHTML = noExpiry.length === 0
+    ? '<div class="empty"><div class="empty-icon">📦</div><p>目前沒有無到期日的物品</p></div>'
+    : noExpiry.map(miniCard).join('')
+  const restockItems = items.filter(i => i.restock_enabled && i.restock_next_date)
+  restockItems.sort((a,b) => new Date(a.restock_next_date) - new Date(b.restock_next_date))
+  const restockEl = document.getElementById('restock-list')
+  restockEl.innerHTML = restockItems.length === 0
+    ? '<div class="empty"><div class="empty-icon">🔔</div><p>尚無補貨提醒</p></div>'
+    : restockItems.map(i => {
+        const d = new Date(i.restock_next_date)
+        const dateStr = `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`
+        const repeatStr = i.restock_repeat === 'infinite' ? '無限循環' : `剩 ${i.restock_count} 次`
+        return `<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--gray-100)">
+          <span style="font-size:22px;flex-shrink:0">${catIcons[i.category]||'📦'}</span>
+          <div style="flex:1">
+            <div style="font-weight:600;font-size:14px">${i.name}</div>
+            <div style="font-size:12px;color:var(--primary);margin-top:2px">📅 下次提醒：${dateStr}</div>
+            <div style="font-size:11px;color:var(--gray-400)">${repeatStr}</div>
+          </div>
+        </div>`
+      }).join('')
+}
+
+// ── 補貨提醒 UI ──
+function toggleRestockOptions(prefix) {
+  const checked = document.getElementById(prefix+'-restock-toggle').checked
+  const opts = document.getElementById(prefix+'-restock-options')
+  opts.classList.toggle('open', checked)
+  if (checked) { updateRestockDay(prefix) }
+}
+function toggleRepeatCount(prefix) {
+  const val = document.getElementById(prefix+'-restock-repeat').value
+  document.getElementById(prefix+'-restock-count-row').style.display = val==='count' ? 'flex' : 'none'
+}
+function updateRestockDay(prefix) {
+  const freq = document.getElementById(prefix+'-restock-freq').value
+  const sel = document.getElementById(prefix+'-restock-day')
+  const lbl = document.getElementById(prefix+'-restock-day-label')
+  if (freq==='monthly') {
+    lbl.textContent = '每月幾號'
+    sel.innerHTML = Array.from({length:28},(_,i)=>`<option value="${i+1}">${i+1} 號</option>`).join('')
+  } else {
+    lbl.textContent = '星期幾'
+    const days = ['日','一','二','三','四','五','六']
+    sel.innerHTML = days.map((d,i)=>`<option value="${i}">星期${d}</option>`).join('')
+  }
+}
+function calcNextRestockDate(freq, day) {
+  const now = new Date()
+  if (freq==='monthly') {
+    let d = new Date(now.getFullYear(), now.getMonth(), day)
+    if (d <= now) d = new Date(now.getFullYear(), now.getMonth()+1, day)
+    return d.toISOString().split('T')[0]
+  } else {
+    const diff = (day - now.getDay() + 7) % 7 || 7
+    const d = new Date(now); d.setDate(now.getDate()+diff)
+    return d.toISOString().split('T')[0]
+  }
+}
+function getRestockData(prefix) {
+  const enabled = document.getElementById(prefix+'-restock-toggle').checked
+  if (!enabled) return { restock_enabled: false, restock_frequency: null, restock_day: null, restock_repeat: null, restock_count: null, restock_next_date: null }
+  const freq = document.getElementById(prefix+'-restock-freq').value
+  const day = parseInt(document.getElementById(prefix+'-restock-day').value)
+  const repeat = document.getElementById(prefix+'-restock-repeat').value
+  const count = repeat==='count' ? parseInt(document.getElementById(prefix+'-restock-count').value)||2 : null
+  return { restock_enabled: true, restock_frequency: freq, restock_day: day, restock_repeat: repeat, restock_count: count, restock_next_date: calcNextRestockDate(freq, day) }
+}
+
 function showSection(id, btn) {
   document.querySelectorAll('.section').forEach(s => s.classList.remove('active'))
   document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'))
@@ -731,11 +913,12 @@ function showStatItems(type) {
 
 // ── 總覽 ──
 function renderDashboard() {
+  const withExpiry=items.filter(i=>i.expiry_date)
   const expired=items.filter(i=>getStatus(i)==='expired')
   const soon=items.filter(i=>getStatus(i)==='expiring-soon')
   document.getElementById('stat-expired-num').textContent=expired.length
   document.getElementById('stat-soon-num').textContent=soon.length
-  document.getElementById('stat-total-num').textContent=items.length
+  document.getElementById('stat-total-num').textContent=withExpiry.length
   activeStatFilter=null
   document.getElementById('stat-detail').style.display='none'
   document.querySelectorAll('.stat').forEach(s=>s.classList.remove('stat-active'))
@@ -833,6 +1016,7 @@ function renderItems() {
         </div>
         <div class="expiry-label ${lbl.cls}">${lbl.text}</div>
         ${item.note ? `<div style="font-size:12px;color:var(--gray-400);margin-top:4px">${item.note}</div>` : ''}
+        ${item.restock_enabled ? `<span class="tag-restock">🔔 補貨提醒中</span>` : ''}
         ${canDonate ? `<button class="btn-donate" onclick="showDonate('${item.category}')">🤲 捐贈建議</button>` : ''}
       </div>
       <div class="item-actions">
@@ -851,6 +1035,7 @@ async function addItem() {
   btn.disabled=true; btn.textContent='新增中...'
   let photo_url = null
   if (addPhotoFile) { photo_url = await uploadPhoto(addPhotoFile) }
+  const restock = getRestockData('add')
   const { error }=await db.from('items').insert({
     household_id:currentHousehold.id, name,
     category:getCatValue('add'), location:getLocValue('add'),
@@ -858,7 +1043,7 @@ async function addItem() {
     unit:document.getElementById('add-unit').value.trim(),
     expiry_date:document.getElementById('add-expiry').value||null,
     note:document.getElementById('add-note').value.trim(),
-    photo_url, added_by:currentUser.id
+    photo_url, added_by:currentUser.id, ...restock
   })
   btn.disabled=false; btn.textContent='新增物品'
   if (error) { alert('新增失敗：'+error.message); return }
@@ -867,6 +1052,8 @@ async function addItem() {
   document.getElementById('add-unit').value=''
   document.getElementById('add-expiry').value=''
   document.getElementById('add-note').value=''
+  document.getElementById('add-restock-toggle').checked=false
+  document.getElementById('add-restock-options').classList.remove('open')
   document.getElementById('add-photo-preview').innerHTML='<span style="color:var(--gray-400);font-size:13px">📷 點擊拍照或選照片（可自動帶入名稱）</span>'
   document.getElementById('add-photo-input').value=''
   const hintEl=document.getElementById('add-vision-hint')
@@ -892,6 +1079,18 @@ function openEdit(id) {
   document.getElementById('edit-unit').value=item.unit||''
   document.getElementById('edit-expiry').value=item.expiry_date||''
   document.getElementById('edit-note').value=item.note||''
+  // 補貨提醒
+  const restockToggle = document.getElementById('edit-restock-toggle')
+  restockToggle.checked = !!item.restock_enabled
+  document.getElementById('edit-restock-options').classList.toggle('open', !!item.restock_enabled)
+  if (item.restock_enabled) {
+    document.getElementById('edit-restock-freq').value = item.restock_frequency||'monthly'
+    updateRestockDay('edit')
+    if (item.restock_day !== null) document.getElementById('edit-restock-day').value = item.restock_day
+    document.getElementById('edit-restock-repeat').value = item.restock_repeat||'infinite'
+    toggleRepeatCount('edit')
+    if (item.restock_count) document.getElementById('edit-restock-count').value = item.restock_count
+  }
   editSelectedPhotoFile=null
   const prevEl=document.getElementById('edit-photo-preview')
   prevEl.innerHTML=item.photo_url
@@ -908,6 +1107,7 @@ async function saveEdit() {
     const uploaded=await uploadPhoto(editSelectedPhotoFile)
     if (uploaded) photo_url=uploaded
   }
+  const restock = getRestockData('edit')
   const { error }=await db.from('items').update({
     name:document.getElementById('edit-name').value.trim(),
     category:getCatValue('edit'), location:getLocValue('edit'),
@@ -915,7 +1115,7 @@ async function saveEdit() {
     unit:document.getElementById('edit-unit').value.trim(),
     expiry_date:document.getElementById('edit-expiry').value||null,
     note:document.getElementById('edit-note').value.trim(),
-    photo_url
+    photo_url, ...restock
   }).eq('id',id)
   if (error) { alert('儲存失敗：'+error.message); return }
   editSelectedPhotoFile=null
