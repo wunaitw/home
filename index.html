@@ -347,27 +347,49 @@
             </label>
           </div>
           <div class="restock-options" id="add-restock-options">
-            <div class="restock-row">
-              <label>週期</label>
-              <select id="add-restock-freq" onchange="updateRestockDay('add')">
-                <option value="monthly">每月</option>
-                <option value="weekly">每週</option>
-              </select>
+            <div class="restock-row" style="margin-bottom:12px">
+              <label>類型</label>
+              <div style="display:flex;gap:8px;flex:1">
+                <label style="display:flex;align-items:center;gap:4px;font-size:13px;font-weight:normal;cursor:pointer;flex:1;background:white;border:1px solid var(--gray-200);border-radius:8px;padding:8px;justify-content:center" id="add-type-time-label">
+                  <input type="radio" name="add-restock-type" value="time" checked onchange="switchRestockType('add')"> 📅 週期提醒
+                </label>
+                <label style="display:flex;align-items:center;gap:4px;font-size:13px;font-weight:normal;cursor:pointer;flex:1;background:white;border:1px solid var(--gray-200);border-radius:8px;padding:8px;justify-content:center" id="add-type-qty-label">
+                  <input type="radio" name="add-restock-type" value="quantity" onchange="switchRestockType('add')"> 📦 數量提醒
+                </label>
+              </div>
             </div>
-            <div class="restock-row">
-              <label id="add-restock-day-label">每月幾號</label>
-              <select id="add-restock-day"></select>
+            <div id="add-restock-time-opts">
+              <div class="restock-row">
+                <label>週期</label>
+                <select id="add-restock-freq" onchange="updateRestockDay('add')">
+                  <option value="monthly">每月</option>
+                  <option value="weekly">每週</option>
+                </select>
+              </div>
+              <div class="restock-row">
+                <label id="add-restock-day-label">每月幾號</label>
+                <select id="add-restock-day"></select>
+              </div>
+              <div class="restock-row">
+                <label>重複</label>
+                <select id="add-restock-repeat" onchange="toggleRepeatCount('add')">
+                  <option value="infinite">無限期循環</option>
+                  <option value="count">循環幾次</option>
+                </select>
+              </div>
+              <div class="restock-row" id="add-restock-count-row" style="display:none">
+                <label>次數</label>
+                <input type="number" id="add-restock-count" value="2" min="1" max="99">
+              </div>
             </div>
-            <div class="restock-row">
-              <label>重複</label>
-              <select id="add-restock-repeat" onchange="toggleRepeatCount('add')">
-                <option value="infinite">無限期循環</option>
-                <option value="count">循環幾次</option>
-              </select>
-            </div>
-            <div class="restock-row" id="add-restock-count-row" style="display:none">
-              <label>次數</label>
-              <input type="number" id="add-restock-count" value="2" min="1" max="99">
+            <div id="add-restock-qty-opts" style="display:none">
+              <div class="restock-row">
+                <label>低於</label>
+                <div style="display:flex;align-items:center;gap:8px;flex:1">
+                  <input type="number" id="add-restock-min-qty" value="2" min="1" style="flex:1">
+                  <span style="font-size:14px;color:var(--gray-600)">個時提醒補貨</span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -495,27 +517,49 @@
         </label>
       </div>
       <div class="restock-options" id="edit-restock-options">
-        <div class="restock-row">
-          <label>週期</label>
-          <select id="edit-restock-freq" onchange="updateRestockDay('edit')">
-            <option value="monthly">每月</option>
-            <option value="weekly">每週</option>
-          </select>
+        <div class="restock-row" style="margin-bottom:12px">
+          <label>類型</label>
+          <div style="display:flex;gap:8px;flex:1">
+            <label style="display:flex;align-items:center;gap:4px;font-size:13px;font-weight:normal;cursor:pointer;flex:1;background:white;border:1px solid var(--gray-200);border-radius:8px;padding:8px;justify-content:center" id="edit-type-time-label">
+              <input type="radio" name="edit-restock-type" value="time" checked onchange="switchRestockType('edit')"> 📅 週期提醒
+            </label>
+            <label style="display:flex;align-items:center;gap:4px;font-size:13px;font-weight:normal;cursor:pointer;flex:1;background:white;border:1px solid var(--gray-200);border-radius:8px;padding:8px;justify-content:center" id="edit-type-qty-label">
+              <input type="radio" name="edit-restock-type" value="quantity" onchange="switchRestockType('edit')"> 📦 數量提醒
+            </label>
+          </div>
         </div>
-        <div class="restock-row">
-          <label id="edit-restock-day-label">每月幾號</label>
-          <select id="edit-restock-day"></select>
+        <div id="edit-restock-time-opts">
+          <div class="restock-row">
+            <label>週期</label>
+            <select id="edit-restock-freq" onchange="updateRestockDay('edit')">
+              <option value="monthly">每月</option>
+              <option value="weekly">每週</option>
+            </select>
+          </div>
+          <div class="restock-row">
+            <label id="edit-restock-day-label">每月幾號</label>
+            <select id="edit-restock-day"></select>
+          </div>
+          <div class="restock-row">
+            <label>重複</label>
+            <select id="edit-restock-repeat" onchange="toggleRepeatCount('edit')">
+              <option value="infinite">無限期循環</option>
+              <option value="count">循環幾次</option>
+            </select>
+          </div>
+          <div class="restock-row" id="edit-restock-count-row" style="display:none">
+            <label>次數</label>
+            <input type="number" id="edit-restock-count" value="2" min="1" max="99">
+          </div>
         </div>
-        <div class="restock-row">
-          <label>重複</label>
-          <select id="edit-restock-repeat" onchange="toggleRepeatCount('edit')">
-            <option value="infinite">無限期循環</option>
-            <option value="count">循環幾次</option>
-          </select>
-        </div>
-        <div class="restock-row" id="edit-restock-count-row" style="display:none">
-          <label>次數</label>
-          <input type="number" id="edit-restock-count" value="2" min="1" max="99">
+        <div id="edit-restock-qty-opts" style="display:none">
+          <div class="restock-row">
+            <label>低於</label>
+            <div style="display:flex;align-items:center;gap:8px;flex:1">
+              <input type="number" id="edit-restock-min-qty" value="2" min="1" style="flex:1">
+              <span style="font-size:14px;color:var(--gray-600)">個時提醒補貨</span>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -800,21 +844,33 @@ function renderStockPanel() {
   stockEl.innerHTML = noExpiry.length === 0
     ? '<div class="empty"><div class="empty-icon">📦</div><p>目前沒有無到期日的物品</p></div>'
     : noExpiry.map(miniCard).join('')
-  const restockItems = items.filter(i => i.restock_enabled && i.restock_next_date)
-  restockItems.sort((a,b) => new Date(a.restock_next_date) - new Date(b.restock_next_date))
+  const restockItems = items.filter(i => i.restock_enabled)
+  restockItems.sort((a,b) => {
+    if (a.restock_next_date && b.restock_next_date) return new Date(a.restock_next_date) - new Date(b.restock_next_date)
+    if (a.restock_next_date) return -1; if (b.restock_next_date) return 1; return 0
+  })
   const restockEl = document.getElementById('restock-list')
   restockEl.innerHTML = restockItems.length === 0
     ? '<div class="empty"><div class="empty-icon">🔔</div><p>尚無補貨提醒</p></div>'
     : restockItems.map(i => {
-        const d = new Date(i.restock_next_date)
-        const dateStr = `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`
-        const repeatStr = i.restock_repeat === 'infinite' ? '無限循環' : `剩 ${i.restock_count} 次`
+        let infoLine = '', subLine = ''
+        if (i.restock_type === 'quantity') {
+          const low = i.restock_min_qty || 2
+          const needsRestock = (i.quantity || 0) <= low
+          infoLine = `📦 低於 ${low} 個時提醒補貨`
+          subLine = needsRestock ? '<span style="color:#c0392b;font-weight:600">⚠️ 目前數量偏低，需要補貨</span>' : `目前數量：${i.quantity}${i.unit||''}`
+        } else {
+          const d = new Date(i.restock_next_date)
+          const dateStr = `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`
+          infoLine = `📅 下次提醒：${dateStr}`
+          subLine = i.restock_repeat === 'infinite' ? '無限循環' : `剩 ${i.restock_count} 次`
+        }
         return `<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--gray-100)">
           <span style="font-size:22px;flex-shrink:0">${catIcons[i.category]||'📦'}</span>
           <div style="flex:1">
             <div style="font-weight:600;font-size:14px">${i.name}</div>
-            <div style="font-size:12px;color:var(--primary);margin-top:2px">📅 下次提醒：${dateStr}</div>
-            <div style="font-size:11px;color:var(--gray-400)">${repeatStr}</div>
+            <div style="font-size:12px;color:var(--primary);margin-top:2px">${infoLine}</div>
+            <div style="font-size:11px;color:var(--gray-400)">${subLine}</div>
           </div>
         </div>`
       }).join('')
@@ -856,14 +912,24 @@ function calcNextRestockDate(freq, day) {
     return d.toISOString().split('T')[0]
   }
 }
+function switchRestockType(prefix) {
+  const type = document.querySelector(`input[name="${prefix}-restock-type"]:checked`)?.value || 'time'
+  document.getElementById(prefix+'-restock-time-opts').style.display = type==='time' ? '' : 'none'
+  document.getElementById(prefix+'-restock-qty-opts').style.display = type==='quantity' ? '' : 'none'
+}
 function getRestockData(prefix) {
   const enabled = document.getElementById(prefix+'-restock-toggle').checked
-  if (!enabled) return { restock_enabled: false, restock_frequency: null, restock_day: null, restock_repeat: null, restock_count: null, restock_next_date: null }
+  if (!enabled) return { restock_enabled: false, restock_type: null, restock_frequency: null, restock_day: null, restock_repeat: null, restock_count: null, restock_next_date: null, restock_min_qty: null }
+  const type = document.querySelector(`input[name="${prefix}-restock-type"]:checked`)?.value || 'time'
+  if (type === 'quantity') {
+    const minQty = parseInt(document.getElementById(prefix+'-restock-min-qty').value)||2
+    return { restock_enabled: true, restock_type: 'quantity', restock_frequency: null, restock_day: null, restock_repeat: null, restock_count: null, restock_next_date: null, restock_min_qty: minQty }
+  }
   const freq = document.getElementById(prefix+'-restock-freq').value
   const day = parseInt(document.getElementById(prefix+'-restock-day').value)
   const repeat = document.getElementById(prefix+'-restock-repeat').value
   const count = repeat==='count' ? parseInt(document.getElementById(prefix+'-restock-count').value)||2 : null
-  return { restock_enabled: true, restock_frequency: freq, restock_day: day, restock_repeat: repeat, restock_count: count, restock_next_date: calcNextRestockDate(freq, day) }
+  return { restock_enabled: true, restock_type: 'time', restock_frequency: freq, restock_day: day, restock_repeat: repeat, restock_count: count, restock_next_date: calcNextRestockDate(freq, day), restock_min_qty: null }
 }
 
 function showSection(id, btn) {
@@ -1016,7 +1082,7 @@ function renderItems() {
         </div>
         <div class="expiry-label ${lbl.cls}">${lbl.text}</div>
         ${item.note ? `<div style="font-size:12px;color:var(--gray-400);margin-top:4px">${item.note}</div>` : ''}
-        ${item.restock_enabled ? `<span class="tag-restock">🔔 補貨提醒中</span>` : ''}
+        ${item.restock_enabled ? `<span class="tag-restock">${item.restock_type==='quantity' ? `📦 低於${item.restock_min_qty||2}個提醒` : '🔔 補貨提醒中'}</span>` : ''}
         ${canDonate ? `<button class="btn-donate" onclick="showDonate('${item.category}')">🤲 捐贈建議</button>` : ''}
       </div>
       <div class="item-actions">
@@ -1084,12 +1150,19 @@ function openEdit(id) {
   restockToggle.checked = !!item.restock_enabled
   document.getElementById('edit-restock-options').classList.toggle('open', !!item.restock_enabled)
   if (item.restock_enabled) {
-    document.getElementById('edit-restock-freq').value = item.restock_frequency||'monthly'
-    updateRestockDay('edit')
-    if (item.restock_day !== null) document.getElementById('edit-restock-day').value = item.restock_day
-    document.getElementById('edit-restock-repeat').value = item.restock_repeat||'infinite'
-    toggleRepeatCount('edit')
-    if (item.restock_count) document.getElementById('edit-restock-count').value = item.restock_count
+    const rtype = item.restock_type || 'time'
+    document.querySelectorAll('input[name="edit-restock-type"]').forEach(r => { r.checked = r.value === rtype })
+    switchRestockType('edit')
+    if (rtype === 'quantity') {
+      document.getElementById('edit-restock-min-qty').value = item.restock_min_qty || 2
+    } else {
+      document.getElementById('edit-restock-freq').value = item.restock_frequency||'monthly'
+      updateRestockDay('edit')
+      if (item.restock_day !== null) document.getElementById('edit-restock-day').value = item.restock_day
+      document.getElementById('edit-restock-repeat').value = item.restock_repeat||'infinite'
+      toggleRepeatCount('edit')
+      if (item.restock_count) document.getElementById('edit-restock-count').value = item.restock_count
+    }
   }
   editSelectedPhotoFile=null
   const prevEl=document.getElementById('edit-photo-preview')
