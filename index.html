@@ -296,7 +296,6 @@
       </div>
       <!-- 庫存管理 -->
       <div id="dash-stock" class="sub-panel">
-        <div class="card"><div class="card-title">📦 無到期日物品</div><div id="stock-list"></div></div>
         <div class="card"><div class="card-title">🔔 補貨提醒清單</div><div id="restock-list"></div></div>
       </div>
     </div>
@@ -487,7 +486,15 @@
           <span class="premium-badge" id="premium-badge-text">免費版</span>
         </div>
         <div id="premium-card-body">
-          <div style="font-size:13px;color:#7c3aed;margin-bottom:12px">每月 10 次拍照辨識・基本功能</div>
+          <div style="font-size:12px;color:#6d28d9;margin-bottom:10px;line-height:1.8">
+            免費版限制：📷 拍照辨識每月 10 次
+          </div>
+          <div style="font-size:12px;color:#7c3aed;margin-bottom:12px;line-height:2">
+            <span style="opacity:.6">升級後解鎖：</span><br>
+            📷 無限拍照辨識 &nbsp;·&nbsp; 🛒 購物清單<br>
+            ⚡ 快速消耗 &nbsp;·&nbsp; 🔔 到期推播通知<br>
+            👨‍👩‍👧 無限家庭成員共用
+          </div>
           <button class="btn-subscribe" style="font-size:14px;padding:12px" onclick="showPaywall()">升級 Premium 解鎖全功能</button>
         </div>
       </div>
@@ -909,11 +916,6 @@ function switchDashTab(tab, btn) {
 }
 
 function renderStockPanel() {
-  const noExpiry = items.filter(i => !i.expiry_date)
-  const stockEl = document.getElementById('stock-list')
-  stockEl.innerHTML = noExpiry.length === 0
-    ? '<div class="empty"><div class="empty-icon">📦</div><p>目前沒有無到期日的物品</p></div>'
-    : noExpiry.map(miniCard).join('')
   const restockItems = items.filter(i => i.restock_enabled)
   restockItems.sort((a,b) => {
     if (a.restock_next_date && b.restock_next_date) return new Date(a.restock_next_date) - new Date(b.restock_next_date)
